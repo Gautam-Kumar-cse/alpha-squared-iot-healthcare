@@ -1,0 +1,28 @@
+#ifndef CONFIG_H
+#define CONFIG_H
+
+// ==============================================================================
+// ALPHA SQUARED - ESP32 Firmware Configuration
+// Team Alpha Squared | Government Polytechnic Gaya
+// Rename this file to 'config.h' and fill in your network & Firebase credentials.
+// ==============================================================================
+
+// Wi-Fi Network Credentials
+#define WIFI_SSID           "YOUR_WIFI_SSID"
+#define WIFI_PASSWORD       "YOUR_WIFI_PASSWORD"
+
+// Firebase Realtime Database Endpoint
+// Format: https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com
+#define FIREBASE_HOST       "https://alpha-squared-iot-default-rtdb.firebaseio.com"
+#define FIREBASE_AUTH       "YOUR_DATABASE_SECRET_OR_FIREBASE_AUTH_TOKEN"
+
+// Device & Patient Identity Mapping
+#define DEVICE_ID           "ESP32-ALPHA-01"
+#define PATIENT_ID          "PATIENT-001"
+
+// Telemetry Transmission Intervals (in milliseconds)
+#define TELEMETRY_INTERVAL_MS   3000   // Send vitals every 3 seconds
+#define HEARTBEAT_INTERVAL_MS   15000  // Send device status every 15 seconds
+
+#endif // CONFIG_H
+

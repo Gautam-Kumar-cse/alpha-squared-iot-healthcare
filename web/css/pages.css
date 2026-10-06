@@ -1,0 +1,288 @@
+/* ==========================================================================
+   ALPHA SQUARED - Page-Specific Layouts & Specialized Styles
+   ========================================================================== */
+
+/* Landing Page Hero */
+.hero-section {
+  padding: clamp(2rem, 6vw, 5rem) 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+}
+
+.hero-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.95rem;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid var(--border-cyan);
+  border-radius: var(--radius-full);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--cyan-primary);
+  margin-bottom: var(--space-md);
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.15);
+}
+
+.hero-title {
+  max-width: 900px;
+  margin-bottom: var(--space-md);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(2.5rem, 5.5vw, 4.2rem);
+  line-height: 1.08;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #ffffff 40%, var(--cyan-primary) 85%, #60a5fa 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-desc {
+  max-width: 720px;
+  font-size: clamp(1rem, 2vw, 1.25rem);
+  line-height: 1.6;
+  margin-bottom: var(--space-xl);
+  color: #cbd5e1;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-2xl);
+}
+
+/* Feature Showcase Grid */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--space-lg);
+  margin: var(--space-2xl) 0;
+}
+
+.feature-box {
+  padding: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.feature-icon-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 240, 255, 0.1);
+  border: 1px solid var(--cyan-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cyan-primary);
+}
+
+.feature-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* Architecture Visualizer Box */
+.architecture-container {
+  padding: var(--space-xl);
+  margin: var(--space-2xl) 0;
+  border-color: var(--border-cyan);
+}
+
+.arch-steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-md);
+  margin-top: var(--space-lg);
+  position: relative;
+}
+
+.arch-step-card {
+  padding: var(--space-md);
+  background: rgba(6, 10, 18, 0.6);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.arch-step-num {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--cyan-primary);
+}
+
+/* Institutional Team Card */
+.team-section {
+  margin: var(--space-2xl) 0;
+  padding: var(--space-xl);
+  text-align: center;
+  border: 1px solid rgba(0, 240, 255, 0.15);
+}
+
+/* Auth Cards (Login & Register) */
+.auth-wrapper {
+  min-height: calc(100vh - var(--header-height) - 100px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg) var(--space-md);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+  padding: var(--space-xl);
+}
+
+.auth-header {
+  text-align: center;
+  margin-bottom: var(--space-lg);
+}
+
+.auth-header h2 {
+  font-size: 1.75rem;
+  margin-bottom: var(--space-xs);
+}
+
+/* Dashboard Specific Layout */
+.dashboard-topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  margin-bottom: var(--space-lg);
+}
+
+.patient-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.patient-avatar {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00f0ff, #0070f3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #000;
+  font-size: 1.1rem;
+}
+
+.chart-card-wrapper {
+  min-height: 340px;
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.chart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+}
+
+.chart-canvas-container {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 250px;
+  width: 100%;
+}
+
+/* Location Map Canvas Preview */
+.map-preview-box {
+  width: 100%;
+  height: 240px;
+  border-radius: var(--radius-sm);
+  background: #091322;
+  border: 1px solid var(--border-subtle);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.map-radar-ring {
+  position: absolute;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  border: 2px dashed rgba(0, 240, 255, 0.4);
+  animation: radar-spin 10s linear infinite;
+}
+
+@keyframes radar-spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.map-pin {
+  z-index: 2;
+  color: var(--cyan-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+/* Emergency Center Layout */
+.emergency-alert-banner {
+  padding: var(--space-lg);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-lg);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  background: rgba(239, 68, 68, 0.15);
+  border: 2px solid #ef4444;
+  box-shadow: var(--shadow-emergency);
+}
+
+.emergency-alert-banner.active {
+  animation: emergency-halo 2s infinite;
+}
+
+@keyframes emergency-halo {
+  0% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 35px rgba(239, 68, 68, 0.7); }
+  100% { box-shadow: 0 0 15px rgba(239, 68, 68, 0.3); }
+}
+
+/* Caregiver Card */
+.caregiver-card {
+  padding: var(--space-md);
+  background: rgba(6, 10, 18, 0.5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.caregiver-card.primary {
+  border-color: rgba(0, 240, 255, 0.4);
+}
+

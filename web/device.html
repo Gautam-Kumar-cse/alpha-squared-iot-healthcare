@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Device &amp; Hardware Diagnostics — ALPHA SQUARED IoT</title>
+  <meta name="description" content="ESP32 microcontroller telemetry health, Wi-Fi link status, and sensor subsystem diagnostics.">
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="app-container">
+    <header id="navbar-mount"></header>
+
+    <main class="main-wrapper">
+      <section class="dashboard-topbar">
+        <div>
+          <div class="status-badge normal" style="margin-bottom: 0.35rem;">HARDWARE TELEMETRY LINK</div>
+          <h1 style="font-size: 1.85rem; font-weight: 800;">ESP32 Node &amp; Subsystem Diagnostics</h1>
+          <p style="font-size: 0.9rem;">Wearable micro-controller status, bus health, Wi-Fi RSSI, and sensor telemetry diagnostics</p>
+        </div>
+
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-secondary btn-sm" id="btn-ping-hardware">
+            <i data-lucide="radio" style="width:15px;height:15px;"></i>
+            <span>Send Hardware Ping</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Hardware Node Status Hero -->
+      <section class="glass-panel telemetry-hero normal" id="node-hero-panel" style="margin-bottom: var(--space-md);">
+        <div class="telemetry-info">
+          <div>
+            <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">ESP32 Node Operational State</div>
+            <div class="telemetry-status-big" id="node-status-text" style="color:#34d399;">ONLINE</div>
+          </div>
+        </div>
+
+        <div class="telemetry-meta">
+          <div style="color:#cbd5e1; font-size:0.875rem;">
+            Node ID: <strong style="color:var(--cyan-primary);" id="node-id-text">ESP32-ALPHA-01</strong> &bull;
+            Firmware: <span style="font-family:var(--font-mono); color:#94a3b8;">v1.0.0-PROTOTYPE</span>
+          </div>
+          <div style="font-size:0.775rem; color:var(--text-subtle); display:flex; gap:1.25rem; margin-top:0.25rem;">
+            <span>LAST HEARTBEAT: <strong id="node-last-heartbeat" style="color:var(--cyan-primary);">Just now</strong></span>
+            <span>WI-FI RSSI: <strong id="node-wifi-rssi" style="color:#34d399;">-58 dBm (Strong)</strong></span>
+            <span>BATTERY: <strong id="node-battery-level" style="color:#38bdf8;">94% Li-Ion</strong></span>
+          </div>
+        </div>
+
+        <div class="status-badge normal" id="node-state-badge">SYNCED TO RTDB</div>
+      </section>
+
+      <!-- Sensor Subsystem Status Grid -->
+      <section style="margin-bottom:var(--space-xl);">
+        <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:var(--space-md); display:flex; align-items:center; gap:0.5rem;">
+          <i data-lucide="cpu" style="width:18px;height:18px;color:var(--cyan-primary);"></i>
+          <span>Modular Sensor Subsystems Health</span>
+        </h3>
+
+        <div class="vital-cards-grid">
+          <!-- Pulse & SpO2 Sensor -->
+          <div class="glass-panel vital-card">
+            <div class="vital-header">
+              <span class="vital-title">Pulse / SpO2 Sensor</span>
+              <i data-lucide="heart" style="width:18px;height:18px;color:var(--vital-hr);"></i>
+            </div>
+            <div style="margin:var(--space-md) 0 var(--space-xs);">
+              <div style="font-size:1.25rem; font-weight:800; color:#34d399;" id="status-sensor-pulse">ACTIVE &amp; READING</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Target Bus: I2C (0x57)</div>
+            </div>
+            <div class="vital-footer">
+              <span>Driver: MAX30102 HAL</span>
+              <span class="status-badge normal">OK</span>
+            </div>
+          </div>
+
+          <!-- Body Temperature Sensor -->
+          <div class="glass-panel vital-card">
+            <div class="vital-header">
+              <span class="vital-title">Temperature Sensor</span>
+              <i data-lucide="thermometer" style="width:18px;height:18px;color:var(--vital-temp);"></i>
+            </div>
+            <div style="margin:var(--space-md) 0 var(--space-xs);">
+              <div style="font-size:1.25rem; font-weight:800; color:#34d399;" id="status-sensor-temp">ACTIVE &amp; READING</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Target Bus: OneWire / ADC</div>
+            </div>
+            <div class="vital-footer">
+              <span>Driver: DS18B20 / NTC HAL</span>
+              <span class="status-badge normal">OK</span>
+            </div>
+          </div>
+
+          <!-- 6-Axis IMU (Fall Detector) -->
+          <div class="glass-panel vital-card">
+            <div class="vital-header">
+              <span class="vital-title">6-Axis IMU Fall Sensor</span>
+              <i data-lucide="activity" style="width:18px;height:18px;color:var(--vital-motion);"></i>
+            </div>
+            <div style="margin:var(--space-md) 0 var(--space-xs);">
+              <div style="font-size:1.25rem; font-weight:800; color:#34d399;" id="status-sensor-imu">ARMED &amp; MONITORING</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Target Bus: I2C (0x68)</div>
+            </div>
+            <div class="vital-footer">
+              <span>Driver: MPU6050 Vector HAL</span>
+              <span class="status-badge normal">ARMED</span>
+            </div>
+          </div>
+
+          <!-- GPS Satellites Receiver -->
+          <div class="glass-panel vital-card">
+            <div class="vital-header">
+              <span class="vital-title">GPS Satellite Receiver</span>
+              <i data-lucide="navigation" style="width:18px;height:18px;color:#38bdf8;"></i>
+            </div>
+            <div style="margin:var(--space-md) 0 var(--space-xs);">
+              <div style="font-size:1.25rem; font-weight:800; color:#34d399;" id="status-sensor-gps">SATELLITE FIX LOCKED</div>
+              <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">Target Bus: UART2 (RX16/TX17)</div>
+            </div>
+            <div class="vital-footer">
+              <span>Driver: NEO-6M / TinyGPS++</span>
+              <span class="status-badge normal">FIX 3D</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hardware Integration Guide & Hand-off Note -->
+      <section class="glass-panel" style="padding:var(--space-lg); border-color:var(--border-cyan);">
+        <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:var(--space-xs); color:var(--cyan-primary);">
+          Hardware Team Pinout &amp; Driver Abstraction Contract
+        </h3>
+        <p style="font-size:0.875rem; margin-bottom:var(--space-md);">
+          Because specific sensor part numbers are finalized during physical assembly, the firmware implements a clean <strong>Hardware Abstraction Layer (HAL)</strong>. The firmware in <code>hardware/esp32/</code> automatically binds to any compatible sensor using standardized configuration pins.
+        </p>
+
+        <div class="table-responsive">
+          <table class="table-custom">
+            <thead>
+              <tr>
+                <th>Subsystem</th>
+                <th>Supported Hardware Options</th>
+                <th>Standard ESP32 GPIO Pins</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Pulse &amp; SpO2</strong></td>
+                <td>MAX30102 / MAX30100 Optical Sensor</td>
+                <td>GPIO 21 (SDA), GPIO 22 (SCL)</td>
+                <td><span class="status-badge normal">DRIVER READY</span></td>
+              </tr>
+              <tr>
+                <td><strong>Temperature</strong></td>
+                <td>DS18B20 Digital / NTC Thermistor</td>
+                <td>GPIO 4 (OneWire) or GPIO 34 (ADC)</td>
+                <td><span class="status-badge normal">DRIVER READY</span></td>
+              </tr>
+              <tr>
+                <td><strong>Fall Detector</strong></td>
+                <td>MPU6050 / ADXL345 6-Axis IMU</td>
+                <td>GPIO 21 (SDA), GPIO 22 (SCL)</td>
+                <td><span class="status-badge normal">DRIVER READY</span></td>
+              </tr>
+              <tr>
+                <td><strong>GPS Positioning</strong></td>
+                <td>u-blox NEO-6M / NEO-8M UART Module</td>
+                <td>GPIO 16 (RX2), GPIO 17 (TX2)</td>
+                <td><span class="status-badge normal">DRIVER READY</span></td>
+              </tr>
+              <tr>
+                <td><strong>Emergency SOS Button</strong></td>
+                <td>Tactile Pushbutton with Debounce</td>
+                <td>GPIO 15 (Pull-Up Interrupt)</td>
+                <td><span class="status-badge normal">DRIVER READY</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-meta">
+          <div class="inst-name">ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</div>
+          <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
+        </div>
+        <ul class="footer-links">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="emergency.html">Emergency Center</a></li>
+          <li><a href="location.html">Live GPS</a></li>
+          <li><a href="history.html">History</a></li>
+          <li><a href="settings.html">Settings</a></li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="js/pages/device.js"></script>
+</body>
+</html>
+

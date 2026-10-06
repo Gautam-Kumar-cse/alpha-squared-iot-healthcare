@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Health History &amp; Vitals Analytics — ALPHA SQUARED IoT</title>
+  <meta name="description" content="Longitudinal vital trends, multi-parameter charts and historical reading records.">
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <!-- Chart.js & Lucide -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="app-container">
+    <header id="navbar-mount"></header>
+
+    <main class="main-wrapper">
+      <section class="dashboard-topbar">
+        <div>
+          <div class="status-badge normal" style="margin-bottom: 0.35rem;">BIOMETRIC TELEMETRY ARCHIVE</div>
+          <h1 style="font-size: 1.85rem; font-weight: 800;">Health History &amp; Analytics</h1>
+          <p style="font-size: 0.9rem;">Multi-parameter trends for Heart Rate, SpO2 Oxygen, and Body Temperature</p>
+        </div>
+
+        <!-- Filter Controls -->
+        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
+          <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">TIMELINE:</span>
+          <button class="btn btn-secondary btn-sm time-filter-btn active" data-range="15m">Last 15m</button>
+          <button class="btn btn-secondary btn-sm time-filter-btn" data-range="1h">1 Hour</button>
+          <button class="btn btn-secondary btn-sm time-filter-btn" data-range="24h">24 Hours</button>
+          <button class="btn btn-secondary btn-sm time-filter-btn" data-range="all">All Records</button>
+        </div>
+      </section>
+
+      <!-- Multi-Chart View Grid -->
+      <section style="display:flex; flex-direction:column; gap:var(--space-md);">
+        <!-- Chart 1: Heart Rate -->
+        <div class="glass-panel chart-card-wrapper" style="min-height:280px;">
+          <div class="chart-header">
+            <h3 style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="heart" style="width:18px;height:18px;color:var(--vital-hr);"></i>
+              <span>Heart Rate Progression (BPM)</span>
+            </h3>
+            <span class="status-badge normal" style="font-size:0.7rem;">Normal Limit: 55-105 BPM</span>
+          </div>
+          <div class="chart-canvas-container" style="min-height:200px;">
+            <canvas id="chart-hr-history"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: SpO2 Oxygen -->
+        <div class="glass-panel chart-card-wrapper" style="min-height:280px;">
+          <div class="chart-header">
+            <h3 style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="droplet" style="width:18px;height:18px;color:var(--vital-spo2);"></i>
+              <span>Blood Oxygen Saturation (SpO₂ %)</span>
+            </h3>
+            <span class="status-badge normal" style="font-size:0.7rem;">Normal Limit: &gt;94%</span>
+          </div>
+          <div class="chart-canvas-container" style="min-height:200px;">
+            <canvas id="chart-spo2-history"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 3: Temperature -->
+        <div class="glass-panel chart-card-wrapper" style="min-height:280px;">
+          <div class="chart-header">
+            <h3 style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="thermometer" style="width:18px;height:18px;color:var(--vital-temp);"></i>
+              <span>Core Body Temperature (°C)</span>
+            </h3>
+            <span class="status-badge normal" style="font-size:0.7rem;">Normal Limit: 36.1-37.4 °C</span>
+          </div>
+          <div class="chart-canvas-container" style="min-height:200px;">
+            <canvas id="chart-temp-history"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Historical Readings Table -->
+      <section class="glass-panel" style="margin-top:var(--space-md); padding:var(--space-lg);" aria-labelledby="readings-table-heading">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); flex-wrap:wrap; gap:var(--space-sm);">
+          <div>
+            <h3 id="readings-table-heading" style="font-size:1.15rem; font-weight:700;">Historical Readings Table</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Timestamped telemetry payloads logged from wearable node</p>
+          </div>
+          <div id="history-dataset-source" class="status-badge normal" style="font-size:0.75rem;">
+            LIVE RTDB STREAM
+          </div>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table-custom" aria-label="Historical Telemetry Readings">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Heart Rate</th>
+                <th>SpO2</th>
+                <th>Temperature</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="history-table-tbody">
+              <tr>
+                <td colspan="5" style="text-align:center; color:var(--text-subtle); padding:var(--space-lg);">
+                  Loading historical telemetry data...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-meta">
+          <div class="inst-name">ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</div>
+          <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
+        </div>
+        <ul class="footer-links">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="emergency.html">Emergency Center</a></li>
+          <li><a href="location.html">Live GPS</a></li>
+          <li><a href="history.html">History</a></li>
+          <li><a href="settings.html">Settings</a></li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="js/pages/history.js"></script>
+</body>
+</html>
+

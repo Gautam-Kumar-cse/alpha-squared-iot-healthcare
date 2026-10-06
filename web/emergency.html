@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Emergency Command Center — ALPHA SQUARED IoT</title>
+  <meta name="description" content="Dedicated emergency detection, caregiver dispatch, and incident audit response center.">
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="app-container">
+    <header id="navbar-mount"></header>
+
+    <main class="main-wrapper">
+      <!-- Page Header -->
+      <section class="dashboard-topbar">
+        <div>
+          <div class="status-badge emergency" style="margin-bottom: 0.35rem;">CRITICAL RESPONSE CONSOLE</div>
+          <h1 style="font-size: 1.85rem; font-weight: 800;">Emergency Incident Center</h1>
+          <p style="font-size: 0.9rem;">Real-time dispatch status, caregiver acknowledgement &amp; audit history</p>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:var(--space-md); flex-wrap:wrap;">
+          <button type="button" class="btn-sos" id="btn-manual-sos" aria-label="Trigger Deliberate SOS">
+            <i data-lucide="alert-octagon" style="width:20px;height:20px;"></i>
+            <span>TRANSMIT MANUAL SOS</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Active Emergency Banner (if any) -->
+      <section id="active-emergency-container" class="emergency-alert-banner" style="display:none;" role="alert">
+        <div style="display:flex; align-items:center; gap:var(--space-md);">
+          <div style="width:48px; height:48px; border-radius:50%; background:#ef4444; color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 0 20px #ef4444;">
+            <i data-lucide="bell-ring" style="width:26px; height:26px;"></i>
+          </div>
+          <div>
+            <div style="font-size:0.75rem; color:#fee2e2; text-transform:uppercase; font-weight:700; letter-spacing:0.05em;">ACTIVE EMERGENCY DETECTED</div>
+            <h2 id="active-emg-type" style="font-size:1.45rem; color:#fff;">CRITICAL VITALS DETECTED</h2>
+            <div id="active-emg-reason" style="font-size:0.9rem; color:#fca5a5;">Severe Bradycardia detected on edge sensor.</div>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" id="btn-acknowledge-emg" style="background:#fff; color:#000; font-weight:700;">
+            <i data-lucide="check-circle" style="width:16px;height:16px;"></i>
+            <span>Acknowledge Incident</span>
+          </button>
+          <button class="btn btn-primary btn-sm" id="btn-resolve-emg">
+            <i data-lucide="shield-check" style="width:16px;height:16px;"></i>
+            <span>Mark Resolved</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Emergency Vitals & Incident Metadata -->
+      <section class="grid-dashboard">
+        <!-- Vitals Snapshot at Incident -->
+        <div class="col-8">
+          <div class="glass-panel" style="padding:var(--space-lg); display:flex; flex-direction:column; gap:var(--space-md); height:100%;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+                <i data-lucide="activity" style="width:18px;height:18px;color:var(--vital-hr);"></i>
+                <span>Incident Vitals &amp; Sensor Telemetry</span>
+              </h3>
+              <span id="emg-timestamp-badge" class="status-badge normal">Nominal</span>
+            </div>
+
+            <div class="vital-cards-grid" style="margin-bottom:0;">
+              <div class="glass-panel vital-card" style="min-height:130px; padding:var(--space-md);">
+                <div class="vital-header">
+                  <span class="vital-title">Heart Rate</span>
+                  <i data-lucide="heart" style="width:16px;height:16px;color:var(--vital-hr);"></i>
+                </div>
+                <div class="vital-value-wrap">
+                  <span class="vital-value" id="emg-val-hr" style="font-size:2.2rem; color:var(--vital-hr);">--</span>
+                  <span class="vital-unit">BPM</span>
+                </div>
+                <div class="vital-footer" id="emg-hr-range">Normal: 55-105</div>
+              </div>
+
+              <div class="glass-panel vital-card" style="min-height:130px; padding:var(--space-md);">
+                <div class="vital-header">
+                  <span class="vital-title">SpO2 Oxygen</span>
+                  <i data-lucide="droplet" style="width:16px;height:16px;color:var(--vital-spo2);"></i>
+                </div>
+                <div class="vital-value-wrap">
+                  <span class="vital-value" id="emg-val-spo2" style="font-size:2.2rem; color:var(--vital-spo2);">--</span>
+                  <span class="vital-unit">%</span>
+                </div>
+                <div class="vital-footer" id="emg-spo2-range">Target: &gt;94%</div>
+              </div>
+
+              <div class="glass-panel vital-card" style="min-height:130px; padding:var(--space-md);">
+                <div class="vital-header">
+                  <span class="vital-title">Temperature</span>
+                  <i data-lucide="thermometer" style="width:16px;height:16px;color:var(--vital-temp);"></i>
+                </div>
+                <div class="vital-value-wrap">
+                  <span class="vital-value" id="emg-val-temp" style="font-size:2.2rem; color:var(--vital-temp);">--</span>
+                  <span class="vital-unit">°C</span>
+                </div>
+                <div class="vital-footer" id="emg-temp-range">Normal: 36.1-37.4</div>
+              </div>
+            </div>
+
+            <!-- Incident Location Details -->
+            <div style="background:rgba(6, 10, 18, 0.6); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:var(--space-md); display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:var(--space-md);">
+              <div>
+                <div style="font-size:0.75rem; color:var(--text-muted); text-transform:uppercase;">Incident GPS Coordinates</div>
+                <div id="emg-coords-text" style="font-family:var(--font-mono); font-weight:700; color:var(--cyan-primary); font-size:1.05rem;">
+                  24.7955° N, 84.9995° E
+                </div>
+                <div style="font-size:0.75rem; color:var(--text-subtle);">Source: <span id="emg-source-text">DEVICE_GPS</span> &bull; Govt. Polytechnic Gaya, Bihar</div>
+              </div>
+              <a id="btn-emg-gmaps" href="https://maps.google.com/?q=24.7955,84.9995" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm">
+                <i data-lucide="external-link" style="width:15px;height:15px;"></i>
+                <span>Open in Google Maps</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Caregiver Dispatch Network Column -->
+        <div class="col-4">
+          <div class="glass-panel" style="padding:var(--space-lg); display:flex; flex-direction:column; gap:var(--space-md); height:100%;">
+            <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="phone-call" style="width:18px;height:18px;color:#38bdf8;"></i>
+              <span>Emergency Dispatch Contacts</span>
+            </h3>
+
+            <!-- Primary Caregiver -->
+            <div class="caregiver-card primary">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="status-badge normal" style="font-size:0.65rem;">PRIMARY RESPONDER</span>
+                <span style="font-size:0.75rem; color:#34d399;">EMAIL NOTIFIED</span>
+              </div>
+              <div style="font-size:1.05rem; font-weight:700; color:var(--text-main);" id="primary-caregiver-name">Dr. Ramesh Sharma</div>
+              <div style="font-size:0.8rem; color:var(--text-muted);">Attending Physician</div>
+              <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--cyan-primary); margin-top:2px;">+91 98765 43210</div>
+            </div>
+
+            <!-- Secondary Contact -->
+            <div class="caregiver-card">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="status-badge warning" style="font-size:0.65rem;">SECONDARY CONTACT</span>
+                <span style="font-size:0.75rem; color:var(--text-subtle);">ON STANDBY</span>
+              </div>
+              <div style="font-size:1.05rem; font-weight:700; color:var(--text-main);">Amit Doe</div>
+              <div style="font-size:0.8rem; color:var(--text-muted);">Son / Next of Kin</div>
+              <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--cyan-primary); margin-top:2px;">+91 91234 56789</div>
+            </div>
+
+            <!-- Medical Disclaimer Card -->
+            <div style="margin-top:auto; font-size:0.72rem; color:var(--text-subtle); border-left:2px solid var(--border-subtle); padding-left:0.5rem; line-height:1.4;">
+              <strong>NOTICE:</strong> ALPHA SQUARED prototype telemetry notifications are designed to support rapid emergency response but do not replace certified emergency triage or professional clinical diagnosis.
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Incident Audit Trail History -->
+      <section class="glass-panel" style="margin-top:var(--space-md); padding:var(--space-lg);" aria-labelledby="history-heading">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); flex-wrap:wrap; gap:var(--space-sm);">
+          <div>
+            <h3 id="history-heading" style="font-size:1.15rem; font-weight:700;">Incident Audit Log &amp; Resolution History</h3>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Permanent log of triggered emergencies, acknowledgements, and caregiver sign-offs</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-refresh-history">
+            <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+            <span>Refresh Audit Log</span>
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table-custom" aria-label="Emergency History Table">
+            <thead>
+              <tr>
+                <th>Event ID</th>
+                <th>Type</th>
+                <th>Reason</th>
+                <th>Timestamp</th>
+                <th>Caregiver Action</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="emg-history-tbody">
+              <tr>
+                <td colspan="6" style="text-align:center; color:var(--text-subtle); padding:var(--space-lg);">
+                  Loading emergency audit log...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- Incident Resolution Modal (Native <dialog>) -->
+    <dialog id="resolve-modal" class="custom-modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i data-lucide="shield-check" style="width:20px;height:20px;color:var(--status-normal);"></i>
+          <span>RESOLVE EMERGENCY INCIDENT</span>
+        </div>
+        <button type="button" class="modal-close-btn" id="modal-close-resolve">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Record clinical or caregiver actions taken to stabilize the patient.</p>
+        <div class="form-group">
+          <label class="form-label" for="resolver-name">Resolved By (Caregiver / Physician Name)</label>
+          <input type="text" id="resolver-name" class="form-input" required value="Dr. Ramesh Sharma">
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="resolver-notes">Clinical Resolution Notes</label>
+          <textarea id="resolver-notes" class="form-textarea" rows="3" placeholder="e.g. Patient checked in person. Oxygen administered, biometrics returned to nominal limits."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" id="modal-cancel-resolve">Cancel</button>
+        <button type="button" class="btn btn-primary" id="modal-submit-resolve">Confirm Resolution</button>
+      </div>
+    </dialog>
+
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-meta">
+          <div class="inst-name">ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</div>
+          <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
+        </div>
+        <ul class="footer-links">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="emergency.html">Emergency Center</a></li>
+          <li><a href="location.html">Live GPS</a></li>
+          <li><a href="history.html">History</a></li>
+          <li><a href="settings.html">Settings</a></li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="js/pages/emergency.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</title>
+  <meta name="description" content="Next-generation IoT smart health monitoring, fall detection, and real-time emergency dispatch system developed by Team Alpha Squared, Government Polytechnic Gaya.">
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- Ambient Particle & Grid Canvas -->
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="app-container">
+    <!-- Dynamic Navigation Header -->
+    <header id="navbar-mount"></header>
+
+    <!-- Main Content -->
+    <main class="main-wrapper">
+      <!-- Hero Section -->
+      <section class="hero-section" aria-labelledby="hero-title">
+        <div class="hero-pill">
+          <i data-lucide="shield-alert" style="width: 15px; height: 15px;"></i>
+          <span>PATENT-READY PROTOTYPE &bull; GOVT. POLYTECHNIC GAYA</span>
+        </div>
+
+        <h1 id="hero-title" class="hero-title">
+          Intelligent IoT Healthcare &amp;<br>Real-Time Emergency Dispatch
+        </h1>
+
+        <p class="hero-desc">
+          ALPHA SQUARED connects smart ESP32 wearable edge sensors to a responsive, cloud-synchronized telemetry dashboard. Designed for instant fall detection, abnormal vital signs alerting, and immediate caregiver notification.
+        </p>
+
+        <div class="hero-actions">
+          <a href="dashboard.html" class="btn btn-primary btn-lg">
+            <i data-lucide="activity" style="width: 18px; height: 18px;"></i>
+            <span>Launch Live Dashboard</span>
+          </a>
+          <a href="emergency.html" class="btn btn-outline-danger btn-lg">
+            <i data-lucide="alert-octagon" style="width: 18px; height: 18px;"></i>
+            <span>Emergency Center</span>
+          </a>
+          <a href="#how-it-works" class="btn btn-secondary btn-lg">
+            <i data-lucide="info" style="width: 18px; height: 18px;"></i>
+            <span>System Architecture</span>
+          </a>
+        </div>
+
+        <!-- Live Prototype Status Banner -->
+        <div class="glass-panel" style="width:100%; max-width: 900px; padding: var(--space-md) var(--space-lg); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-around; gap: 1rem;">
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div class="status-dot normal"></div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Cloud Database</div>
+              <div style="font-size: 0.9rem; font-weight: 700; color: var(--cyan-primary);">Firebase RTDB Sync</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div class="status-dot normal"></div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Hardware Link</div>
+              <div style="font-size: 0.9rem; font-weight: 700; color: #34d399;">ESP32 Wi-Fi Node</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div class="status-dot normal"></div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Emergency Dispatch</div>
+              <div style="font-size: 0.9rem; font-weight: 700; color: #f43f5e;">Instant Caregiver Mail</div>
+            </div>
+          </div>
+          <div style="display: flex; align-items: center; gap: 0.6rem;">
+            <div class="status-dot normal"></div>
+            <div>
+              <div style="font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase;">Location Lock</div>
+              <div style="font-size: 0.9rem; font-weight: 700; color: #38bdf8;">GPS + Geolocation</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Key Capabilities Overview -->
+      <section aria-labelledby="features-heading" style="margin: var(--space-3xl) 0;">
+        <div style="text-align: center; max-width: 700px; margin: 0 auto var(--space-xl);">
+          <div class="status-badge normal" style="margin-bottom: var(--space-sm);">CORE CAPABILITIES</div>
+          <h2 id="features-heading">Comprehensive Patient Safety Ecosystem</h2>
+          <p>Continuous biometrics telemetry combined with autonomous incident detection algorithms.</p>
+        </div>
+
+        <div class="features-grid">
+          <div class="glass-panel feature-box">
+            <div class="feature-icon-badge">
+              <i data-lucide="heart" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Real-Time Vitals Tracking</h3>
+            <p>Continuous pulse rate, blood oxygen saturation (SpO2), and core body temperature monitoring with sub-second cloud synchronization.</p>
+          </div>
+
+          <div class="glass-panel feature-box" style="border-color: rgba(239, 68, 68, 0.3);">
+            <div class="feature-icon-badge" style="background: rgba(239, 68, 68, 0.1); border-color: #ef4444; color: #ef4444;">
+              <i data-lucide="activity" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Autonomous Fall Detection</h3>
+            <p>Integrated 6-axis IMU algorithmic analysis identifies abrupt impact and posture change, initiating a timed escalation workflow.</p>
+          </div>
+
+          <div class="glass-panel feature-box" style="border-color: rgba(255, 0, 85, 0.3);">
+            <div class="feature-icon-badge" style="background: rgba(255, 0, 85, 0.1); border-color: #ff0055; color: #ff0055;">
+              <i data-lucide="bell" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Immediate Caregiver SOS</h3>
+            <p>Physical emergency button on the wearable hardware paired with deliberate two-step software triggers for rapid incident broadcasting.</p>
+          </div>
+
+          <div class="glass-panel feature-box">
+            <div class="feature-icon-badge">
+              <i data-lucide="map-pin" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Live Geolocation Tracking</h3>
+            <p>Precision device GPS coordinate logging with seamless browser fallback and one-tap Google Maps directions for emergency responders.</p>
+          </div>
+
+          <div class="glass-panel feature-box">
+            <div class="feature-icon-badge">
+              <i data-lucide="line-chart" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Longitudinal Health Analytics</h3>
+            <p>Historical trends analysis with interactive Chart.js visualizations, configurable timeline zoom, and anomaly flags.</p>
+          </div>
+
+          <div class="glass-panel feature-box">
+            <div class="feature-icon-badge">
+              <i data-lucide="shield-check" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Role-Based Security Rules</h3>
+            <p>Strict Firebase authorization policies ensure only authorized patients, primary physicians, and caregivers can access sensitive vitals.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Hardware-to-Cloud Architecture Section -->
+      <section id="how-it-works" class="glass-panel architecture-container" aria-labelledby="arch-heading">
+        <div style="text-align: center; max-width: 800px; margin: 0 auto;">
+          <div class="status-badge normal" style="margin-bottom: var(--space-sm);">HARDWARE-TO-CLOUD PIPELINE</div>
+          <h2 id="arch-heading">How The Alpha Squared System Works</h2>
+          <p>From the patient's bedside or wearable device to caregiver emergency dispatch in under two seconds.</p>
+        </div>
+
+        <div class="arch-steps-grid">
+          <div class="arch-step-card">
+            <span class="arch-step-num">STAGE 01</span>
+            <h4 style="color:#00f0ff;">Edge Sensor Sensing</h4>
+            <p style="font-size:0.875rem;">ESP32 micro-controller queries bio-sensors (Pulse/SpO2, Temp, IMU Accelerometer, GPS) at 1-2 Hz intervals.</p>
+          </div>
+
+          <div class="arch-step-card">
+            <span class="arch-step-num">STAGE 02</span>
+            <h4 style="color:#38bdf8;">On-Device Validation</h4>
+            <p style="font-size:0.875rem;">Firmware validates noise bounds, computes jerk vectors for falls, and bundles telemetry with hardware timestamp.</p>
+          </div>
+
+          <div class="arch-step-card">
+            <span class="arch-step-num">STAGE 03</span>
+            <h4 style="color:#60a5fa;">Firebase Realtime Sync</h4>
+            <p style="font-size:0.875rem;">Payloads are transmitted over Wi-Fi / HTTPS directly to Firebase Realtime Database with sub-second event propagation.</p>
+          </div>
+
+          <div class="arch-step-card">
+            <span class="arch-step-num">STAGE 04</span>
+            <h4 style="color:#a78bfa;">Telemetry &amp; Alerts</h4>
+            <p style="font-size:0.875rem;">Browser dashboard updates live without reload. Severe anomalies trigger automated caregiver email and SOS maps dispatch.</p>
+          </div>
+        </div>
+
+        <!-- Tech Stack Pill Ribbon -->
+        <div style="margin-top: var(--space-xl); padding-top: var(--space-lg); border-top: 1px solid var(--border-subtle); display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:0.6rem;">
+          <span style="font-size:0.8rem; color:var(--text-muted); margin-right:0.5rem; text-transform:uppercase; font-weight:700;">Verified Tech Stack:</span>
+          <span class="status-badge normal" style="color:#93c5fd; background:rgba(147, 197, 253, 0.1); border-color:rgba(147, 197, 253, 0.3);">ESP32 Microcontroller</span>
+          <span class="status-badge normal" style="color:#fbbf24; background:rgba(251, 191, 36, 0.1); border-color:rgba(251, 191, 36, 0.3);">Firebase Realtime DB</span>
+          <span class="status-badge normal" style="color:#38bdf8; background:rgba(56, 189, 248, 0.1); border-color:rgba(56, 189, 248, 0.3);">Vanilla JS ES Modules</span>
+          <span class="status-badge normal" style="color:#f472b6; background:rgba(244, 114, 182, 0.1); border-color:rgba(244, 114, 182, 0.3);">Chart.js</span>
+          <span class="status-badge normal" style="color:#4ade80; background:rgba(74, 222, 128, 0.1); border-color:rgba(74, 222, 128, 0.3);">Vercel Serverless</span>
+        </div>
+      </section>
+
+      <!-- Institutional Attribution Section -->
+      <section class="glass-panel team-section" aria-labelledby="team-heading">
+        <div style="max-width: 800px; margin: 0 auto;">
+          <div class="status-badge normal" style="margin-bottom: var(--space-sm);">INNOVATION CREDENTIALS</div>
+          <h2 id="team-heading" style="color:#f8fafc;">Developed by Team Alpha Squared</h2>
+          <p style="color:var(--cyan-primary); font-weight:600; font-size:1.1rem; margin-top:0.3rem;">
+            Government Polytechnic Gaya &bull; Department of State Board of Technical Education, Bihar
+          </p>
+          <p style="margin-top:0.75rem; font-size:0.95rem;">
+            Built as an accessible, high-reliability emergency healthcare platform tailored for elderly monitoring, post-operative patients, and lone workers in industrial and community environments.
+          </p>
+          <div style="margin-top: var(--space-lg); display:flex; justify-content:center; gap: var(--space-md); flex-wrap:wrap;">
+            <a href="dashboard.html" class="btn btn-primary">
+              <i data-lucide="play" style="width: 16px; height: 16px;"></i>
+              <span>Open Monitoring Console</span>
+            </a>
+            <a href="settings.html" class="btn btn-secondary">
+              <i data-lucide="sliders" style="width: 16px; height: 16px;"></i>
+              <span>Configure Thresholds &amp; Contacts</span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-meta">
+          <div class="inst-name">ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</div>
+          <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
+        </div>
+        <ul class="footer-links">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="emergency.html">Emergency Center</a></li>
+          <li><a href="location.html">Live GPS</a></li>
+          <li><a href="history.html">History</a></li>
+          <li><a href="device.html">Hardware Info</a></li>
+          <li><a href="settings.html">Settings</a></li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Page Logic Module -->
+  <script type="module" src="js/pages/landing.js"></script>
+</body>
+</html>
+

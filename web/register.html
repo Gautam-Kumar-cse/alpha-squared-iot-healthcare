@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register Patient — ALPHA SQUARED IoT Healthcare</title>
+  <meta name="description" content="Register a new patient or caregiver profile on the ALPHA SQUARED IoT Platform.">
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="app-container">
+    <header id="navbar-mount"></header>
+
+    <main class="auth-wrapper">
+      <div class="glass-panel auth-card">
+        <div class="auth-header">
+          <div class="brand-badge" style="margin: 0 auto 0.75rem; width: 44px; height: 44px;">
+            <i data-lucide="user-plus" style="width: 24px; height: 24px; color: var(--cyan-primary);"></i>
+          </div>
+          <h2>Register Patient Profile</h2>
+          <p>Link wearable edge node to telemetry monitoring</p>
+        </div>
+
+        <div id="register-alert" style="display:none; padding:0.75rem 1rem; border-radius:6px; font-size:0.875rem; margin-bottom:1rem;" role="alert"></div>
+
+        <form id="register-form">
+          <div class="form-group">
+            <label class="form-label" for="reg-name">Patient Full Name</label>
+            <input type="text" id="reg-name" class="form-input" required autocomplete="name" placeholder="e.g. Rajesh Kumar">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-email">Contact Email</label>
+            <input type="email" id="reg-email" class="form-input" required autocomplete="email" placeholder="patient@example.com">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-device">Assigned ESP32 Device ID</label>
+            <input type="text" id="reg-device" class="form-input" required placeholder="ESP32-ALPHA-01" value="ESP32-ALPHA-01">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reg-password">Password (Minimum 6 Characters)</label>
+            <input type="password" id="reg-password" class="form-input" required autocomplete="new-password" placeholder="••••••••••••" minlength="6">
+          </div>
+
+          <button type="submit" class="btn btn-primary" id="btn-submit-register" style="width: 100%; margin-top: 0.5rem;">
+            <i data-lucide="check" style="width: 18px; height: 18px;"></i>
+            <span id="btn-register-text">Create Account &amp; Link Device</span>
+          </button>
+        </form>
+
+        <div style="text-align: center; margin-top: 1.25rem; font-size: 0.875rem;">
+          <span style="color: var(--text-subtle);">Already registered?</span>
+          <a href="login.html" style="margin-left: 0.35rem; font-weight: 600;">Sign in here</a>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-meta">
+          <div class="inst-name">ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</div>
+          <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
+        </div>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="js/pages/auth.js"></script>
+</body>
+</html>
+

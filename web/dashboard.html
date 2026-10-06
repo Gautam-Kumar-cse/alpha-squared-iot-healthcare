@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Telemetry Dashboard — ALPHA SQUARED IoT</title>
+  <meta name="description" content="Real-time IoT patient monitoring dashboard, vital biometrics, fall status and emergency dispatch console.">
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <!-- Chart.js & Lucide -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <!-- Ambient Particle & Grid Canvas -->
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="app-container">
+    <!-- Dynamic Header -->
+    <header id="navbar-mount"></header>
+
+    <main class="main-wrapper">
+      <!-- Top Dashboard Header with Patient Profile & Manual SOS -->
+      <section class="dashboard-topbar">
+        <div class="patient-badge">
+          <div class="patient-avatar" id="patient-avatar">JD</div>
+          <div>
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <h2 style="font-size:1.4rem; font-weight:800;" id="patient-name">Jane Doe</h2>
+              <span class="status-badge normal" id="patient-badge-state">MONITORED</span>
+            </div>
+            <div style="font-size:0.8rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">
+              PATIENT ID: <span id="patient-id" style="color:var(--cyan-primary);">PATIENT-001</span> &bull; 
+              DEVICE: <span id="patient-device" style="color:#38bdf8;">ESP32-ALPHA-01</span>
+            </div>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:var(--space-md); flex-wrap:wrap;">
+          <!-- Telemetry Sync Timestamp -->
+          <div style="text-align:right; font-size:0.8rem; color:var(--text-muted);">
+            <div>LAST TELEMETRY UPDATE</div>
+            <div id="last-update-time" style="font-family:var(--font-mono); color:var(--text-main); font-weight:600;">Connecting...</div>
+          </div>
+
+          <!-- Big Deliberate Manual SOS Trigger Button -->
+          <button type="button" class="btn-sos" id="trigger-sos-btn" aria-label="Trigger Emergency SOS Alert">
+            <i data-lucide="alert-octagon" style="width:20px;height:20px;"></i>
+            <span>TRANSMIT SOS</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Overall System Health & Status Banner -->
+      <section class="glass-panel telemetry-hero normal" id="telemetry-hero-card">
+        <div class="telemetry-info">
+          <div>
+            <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); font-weight:700;">Overall Telemetry Status</div>
+            <div class="telemetry-status-big" id="overall-status-text" style="color:var(--status-normal);">NORMAL</div>
+          </div>
+        </div>
+
+        <div class="telemetry-meta" style="flex:1 1 300px; max-width:550px;">
+          <div id="status-description" style="color:#cbd5e1; font-size:0.875rem;">
+            All vital signs within safe physiological ranges. ESP32 edge link is active and transmitting.
+          </div>
+          <div style="font-size:0.775rem; color:var(--text-subtle); display:flex; gap:1rem; margin-top:0.25rem;">
+            <span>EDGE LINK: <strong id="edge-link-status" style="color:#34d399;">ONLINE</strong></span>
+            <span>FALL DETECTOR: <strong id="fall-hero-status" style="color:#a78bfa;">ARMED</strong></span>
+            <span>GPS FIX: <strong id="gps-hero-status" style="color:#38bdf8;">ACQUIRED</strong></span>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; align-items:center;">
+          <a href="emergency.html" class="btn btn-secondary btn-sm">
+            <i data-lucide="shield-alert" style="width:14px;height:14px;"></i>
+            <span>Emergency Center</span>
+          </a>
+          <button class="btn btn-secondary btn-sm" id="btn-quick-sim" title="Toggle Simulation / Demo Mode">
+            <i data-lucide="flask-conical" style="width:14px;height:14px;"></i>
+            <span>Demo Mode</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Vital Biometrics Grid Cards -->
+      <section class="vital-cards-grid" aria-label="Real-time Vital Readings">
+        <!-- Heart Rate Card -->
+        <article class="glass-panel vital-card" id="card-heart-rate">
+          <div class="vital-header">
+            <span class="vital-title">Heart Rate</span>
+            <div class="vital-icon-wrap vital-icon-hr">
+              <i data-lucide="heart" style="width:20px;height:20px;"></i>
+            </div>
+          </div>
+          <div class="vital-value-wrap">
+            <span class="vital-value" id="val-heart-rate" style="color:var(--vital-hr);">--</span>
+            <span class="vital-unit">BPM</span>
+          </div>
+          <div class="vital-footer">
+            <span>Range: 55 – 105 BPM</span>
+            <span id="badge-heart-rate" class="status-badge normal">NORMAL</span>
+          </div>
+        </article>
+
+        <!-- SpO2 Blood Oxygen Card -->
+        <article class="glass-panel vital-card" id="card-spo2">
+          <div class="vital-header">
+            <span class="vital-title">Blood Oxygen (SpO₂)</span>
+            <div class="vital-icon-wrap vital-icon-spo2">
+              <i data-lucide="droplet" style="width:20px;height:20px;"></i>
+            </div>
+          </div>
+          <div class="vital-value-wrap">
+            <span class="vital-value" id="val-spo2" style="color:var(--vital-spo2);">--</span>
+            <span class="vital-unit">%</span>
+          </div>
+          <div class="vital-footer">
+            <span>Target: &gt; 94%</span>
+            <span id="badge-spo2" class="status-badge normal">NORMAL</span>
+          </div>
+        </article>
+
+        <!-- Body Temperature Card -->
+        <article class="glass-panel vital-card" id="card-temp">
+          <div class="vital-header">
+            <span class="vital-title">Body Temp</span>
+            <div class="vital-icon-wrap vital-icon-temp">
+              <i data-lucide="thermometer" style="width:20px;height:20px;"></i>
+            </div>
+          </div>
+          <div class="vital-value-wrap">
+            <span class="vital-value" id="val-temp" style="color:var(--vital-temp);">--</span>
+            <span class="vital-unit">°C</span>
+          </div>
+          <div class="vital-footer">
+            <span>Range: 36.1 – 37.5 °C</span>
+            <span id="badge-temp" class="status-badge normal">NORMAL</span>
+          </div>
+        </article>
+
+        <!-- Fall & Movement Status Card -->
+        <article class="glass-panel vital-card" id="card-fall">
+          <div class="vital-header">
+            <span class="vital-title">Fall Detection</span>
+            <div class="vital-icon-wrap vital-icon-fall">
+              <i data-lucide="activity" style="width:20px;height:20px;"></i>
+            </div>
+          </div>
+          <div class="vital-value-wrap">
+            <span class="vital-value" id="val-fall" style="font-size:2rem; color:var(--vital-motion);">NORMAL</span>
+          </div>
+          <div class="vital-footer">
+            <span>IMU Jerk Vector</span>
+            <span id="badge-fall" class="status-badge normal">STABLE</span>
+          </div>
+        </article>
+      </section>
+
+      <!-- Center Analytics & Location Grid -->
+      <section class="grid-dashboard">
+        <!-- Live Vitals Telemetry Chart (Chart.js) -->
+        <div class="col-8">
+          <div class="glass-panel chart-card-wrapper">
+            <div class="chart-header">
+              <div>
+                <h3 style="font-size:1.15rem; font-weight:700;">Recent Vital Trends</h3>
+                <div style="font-size:0.775rem; color:var(--text-muted);">Real-time stream of Heart Rate (BPM) &amp; SpO₂ (%)</div>
+              </div>
+              <div style="display:flex; gap:0.4rem;">
+                <span class="status-badge normal" style="font-size:0.7rem;">STREAMING</span>
+              </div>
+            </div>
+            <div class="chart-canvas-container">
+              <canvas id="live-vitals-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Location & Caregiver Snapshot Column -->
+        <div class="col-4">
+          <div class="glass-panel" style="padding:var(--space-lg); display:flex; flex-direction:column; gap:var(--space-md); height:100%;">
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+              <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.4rem;">
+                <i data-lucide="map-pin" style="width:18px;height:18px;color:var(--cyan-primary);"></i>
+                <span>Live Location</span>
+              </h3>
+              <span class="status-badge normal" id="location-source-badge">DEVICE GPS</span>
+            </div>
+
+            <!-- Radar / Coordinates Box -->
+            <div class="map-preview-box">
+              <div class="map-radar-ring"></div>
+              <div class="map-pin">
+                <i data-lucide="navigation" style="width:24px;height:24px;color:var(--cyan-primary);"></i>
+                <span id="coord-lat-lng" style="margin-top:4px;">24.7955° N, 84.9995° E</span>
+                <span style="font-size:0.68rem; color:var(--text-subtle);">Gaya, Bihar, India</span>
+              </div>
+            </div>
+
+            <div style="display:flex; gap:0.5rem;">
+              <a id="btn-open-gmaps" href="https://maps.google.com/?q=24.7955,84.9995" target="_blank" rel="noopener noreferrer" class="btn btn-secondary btn-sm" style="flex:1;">
+                <i data-lucide="external-link" style="width:14px;height:14px;"></i>
+                <span>Google Maps</span>
+              </a>
+              <a href="location.html" class="btn btn-secondary btn-sm">
+                <span>Full Map</span>
+              </a>
+            </div>
+
+            <!-- Assigned Caregiver Quick Info -->
+            <div class="caregiver-card primary" style="margin-top:auto;">
+              <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase; font-weight:700;">Primary Emergency Caregiver</div>
+              <div style="font-weight:700; color:var(--text-main);" id="caregiver-name">Dr. Ramesh Sharma</div>
+              <div style="font-size:0.8rem; color:var(--cyan-primary); font-family:var(--font-mono);" id="caregiver-phone">+91 98765 43210</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Recent Incidents & Emergency Activity Preview -->
+      <section class="glass-panel" style="margin-top:var(--space-md); padding:var(--space-lg);" aria-labelledby="recent-incidents-heading">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-md);">
+          <h3 id="recent-incidents-heading" style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+            <i data-lucide="history" style="width:18px;height:18px;color:var(--cyan-primary);"></i>
+            <span>Recent Emergency Events &amp; Audit Trail</span>
+          </h3>
+          <a href="emergency.html" class="btn btn-secondary btn-sm">
+            <span>View All Incidents</span>
+          </a>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table-custom" aria-label="Recent Emergency Incidents">
+            <thead>
+              <tr>
+                <th>Event Type</th>
+                <th>Trigger Reason</th>
+                <th>Vitals at Event</th>
+                <th>Timestamp</th>
+                <th>Location</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="emergency-events-table-body">
+              <tr>
+                <td colspan="6" style="text-align:center; color:var(--text-subtle); padding:var(--space-lg);">
+                  No critical incidents recorded. All parameters nominal.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-meta">
+          <div class="inst-name">ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</div>
+          <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
+        </div>
+        <ul class="footer-links">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="emergency.html">Emergency Center</a></li>
+          <li><a href="location.html">Live GPS</a></li>
+          <li><a href="history.html">History</a></li>
+          <li><a href="device.html">Hardware Info</a></li>
+          <li><a href="settings.html">Settings</a></li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Page Logic Module -->
+  <script type="module" src="js/pages/dashboard.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live GPS &amp; Location Tracking — ALPHA SQUARED IoT</title>
+  <meta name="description" content="Precise GPS coordinates, browser geolocation fallback, and emergency mapping interface.">
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="app-container">
+    <header id="navbar-mount"></header>
+
+    <main class="main-wrapper">
+      <section class="dashboard-topbar">
+        <div>
+          <div class="status-badge normal" style="margin-bottom: 0.35rem;">GEOSPATIAL TELEMETRY</div>
+          <h1 style="font-size: 1.85rem; font-weight: 800;">Live Location &amp; Emergency Geolocation</h1>
+          <p style="font-size: 0.9rem;">Real-time GPS lock from wearable ESP32 node with authenticated browser fallback</p>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" id="btn-request-browser-loc">
+            <i data-lucide="crosshair" style="width:15px;height:15px;"></i>
+            <span>Use Browser Geolocation Fallback</span>
+          </button>
+          <a id="btn-launch-gmaps" href="https://maps.google.com/?q=24.7955,84.9995" target="_blank" rel="noopener noreferrer" class="btn btn-primary btn-sm">
+            <i data-lucide="map" style="width:15px;height:15px;"></i>
+            <span>Open in Google Maps</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- Geolocation Hero Grid -->
+      <section class="grid-dashboard">
+        <!-- Main Map Display -->
+        <div class="col-8">
+          <div class="glass-panel" style="padding:var(--space-lg); display:flex; flex-direction:column; gap:var(--space-md); min-height:450px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+                <i data-lucide="satellite" style="width:18px;height:18px;color:var(--cyan-primary);"></i>
+                <span>Interactive Geolocation Radar</span>
+              </h3>
+              <span id="loc-source-badge" class="status-badge normal">DEVICE GPS LOCKED</span>
+            </div>
+
+            <!-- Visual Map Canvas / Radar Box -->
+            <div id="location-view-container" style="position:relative; flex:1 1 350px; background:#070f1e; border:1px solid var(--border-cyan); border-radius:var(--radius-sm); overflow:hidden; display:flex; align-items:center; justify-content:center;">
+              <!-- Embedded Google Maps embed iframe or fallback radar -->
+              <iframe 
+                id="gmaps-embed-frame"
+                title="Emergency Patient Location Map"
+                width="100%" 
+                height="100%" 
+                style="border:0; position:absolute; top:0; left:0; width:100%; height:100%; opacity:0.85; filter: contrast(110%) invert(90%) hue-rotate(180deg);" 
+                loading="lazy" 
+                allowfullscreen 
+                referrerpolicy="no-referrer-when-downgrade"
+                src="https://maps.google.com/maps?q=24.7955,84.9995&hl=en&z=15&output=embed">
+              </iframe>
+
+              <!-- Floating Cyber Target Overlay -->
+              <div style="position:absolute; bottom:1rem; left:1rem; background:rgba(6,10,18,0.9); border:1px solid var(--border-cyan); padding:0.6rem 1rem; border-radius:6px; z-index:10; font-size:0.8rem;">
+                <div style="color:var(--text-muted); font-size:0.7rem; text-transform:uppercase;">CURRENT COORDINATES</div>
+                <div id="embed-coords-text" style="font-family:var(--font-mono); font-weight:700; color:var(--cyan-primary);">
+                  24.7955° N, 84.9995° E
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Location Telemetry Inspector -->
+        <div class="col-4">
+          <div class="glass-panel" style="padding:var(--space-lg); display:flex; flex-direction:column; gap:var(--space-md); height:100%;">
+            <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.4rem;">
+              <i data-lucide="compass" style="width:18px;height:18px;color:#38bdf8;"></i>
+              <span>Coordinates Inspector</span>
+            </h3>
+
+            <!-- Latitude Card -->
+            <div class="glass-panel vital-card" style="min-height:90px; padding:var(--space-sm) var(--space-md);">
+              <span class="vital-title">Latitude</span>
+              <div class="vital-value" id="inspect-lat" style="font-size:1.6rem; color:var(--cyan-primary); margin:0.25rem 0;">24.7955°</div>
+              <div class="vital-footer" style="padding-top:2px;">WGS84 Datum</div>
+            </div>
+
+            <!-- Longitude Card -->
+            <div class="glass-panel vital-card" style="min-height:90px; padding:var(--space-sm) var(--space-md);">
+              <span class="vital-title">Longitude</span>
+              <div class="vital-value" id="inspect-lng" style="font-size:1.6rem; color:var(--cyan-primary); margin:0.25rem 0;">84.9995°</div>
+              <div class="vital-footer" style="padding-top:2px;">WGS84 Datum</div>
+            </div>
+
+            <!-- Signal Source & Accuracy Info -->
+            <div style="background:rgba(6, 10, 18, 0.6); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:var(--space-md); display:flex; flex-direction:column; gap:0.5rem; font-size:0.85rem;">
+              <div>
+                <span style="color:var(--text-muted);">Source Type:</span>
+                <strong id="inspect-source" style="color:#34d399; margin-left:0.35rem;">HARDWARE_GPS (NEO-6M)</strong>
+              </div>
+              <div>
+                <span style="color:var(--text-muted);">Approx. Location:</span>
+                <span style="color:#cbd5e1; margin-left:0.35rem;">Government Polytechnic Gaya, Bihar</span>
+              </div>
+              <div>
+                <span style="color:var(--text-muted);">Last Fix Time:</span>
+                <span id="inspect-time" style="color:var(--cyan-primary); font-family:var(--font-mono); margin-left:0.35rem;">Just now</span>
+              </div>
+            </div>
+
+            <!-- Distinction Notice -->
+            <div style="margin-top:auto; font-size:0.75rem; color:var(--text-subtle); line-height:1.4; border-top:1px solid var(--border-subtle); padding-top:var(--space-xs);">
+              <strong style="color:#cbd5e1;">Hardware vs Fallback:</strong> Device GPS reflects the physical patient's ESP32 coordinates. Browser fallback only activates upon manual consent when GPS hardware signal is obstructed.
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-meta">
+          <div class="inst-name">ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</div>
+          <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
+        </div>
+        <ul class="footer-links">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="emergency.html">Emergency Center</a></li>
+          <li><a href="history.html">History</a></li>
+          <li><a href="settings.html">Settings</a></li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="js/pages/location.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,26 @@
+{
+  "rules": {
+    "patients": {
+      "$patientId": {
+        ".read": "auth != null && (auth.uid === $patientId || root.child('patients').child($patientId).child('contacts').child('primary').child('email').val() === auth.token.email || root.child('patients').child($patientId).child('contacts').child('secondary').child('email').val() === auth.token.email)",
+        ".write": "auth != null && auth.uid === $patientId",
+        "current": {
+          ".write": "auth != null || (newData.child('deviceId').exists() && root.child('devices').child(newData.child('deviceId').val()).child('patientId').val() === $patientId)"
+        },
+        "history": {
+          ".write": "auth != null || (newData.child('deviceId').exists() && root.child('devices').child(newData.child('deviceId').val()).child('patientId').val() === $patientId)"
+        },
+        "emergencies": {
+          ".write": "auth != null || (newData.child('deviceId').exists() && root.child('devices').child(newData.child('deviceId').val()).child('patientId').val() === $patientId)"
+        }
+      }
+    },
+    "devices": {
+      "$deviceId": {
+        ".read": "auth != null",
+        ".write": "newData.hasChild('status') && (newData.child('status').val() === 'ONLINE' || newData.child('status').val() === 'OFFLINE' || newData.child('status').val() === 'WARNING')"
+      }
+    }
+  }
+}
+

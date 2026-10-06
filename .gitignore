@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+.npm/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.log
+
+# Hardware Arduino Build files
+hardware/esp32/build/
+*.bin
+*.elf
+*.hex
+
+# Firebase cache
+.firebase/
+firebase-debug.log*
+

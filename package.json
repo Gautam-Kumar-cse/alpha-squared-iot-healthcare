@@ -1,0 +1,26 @@
+{
+  "name": "alpha-squared-iot-healthcare",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "ALPHA SQUARED — IoT Smart Health & Emergency Detection System for Team Alpha Squared, Government Polytechnic Gaya",
+  "main": "web/index.html",
+  "scripts": {
+    "start": "serve web -l 3000",
+    "dev": "serve web -l 3000",
+    "test": "node testing/run_tests.js"
+  },
+  "keywords": [
+    "iot",
+    "healthcare",
+    "esp32",
+    "firebase",
+    "emergency-detection",
+    "fall-detection",
+    "smart-health"
+  ],
+  "author": "Team Alpha Squared - Government Polytechnic Gaya",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.4"
+  }
+}

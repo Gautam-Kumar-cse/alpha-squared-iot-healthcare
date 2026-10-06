@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings &amp; Contacts — ALPHA SQUARED IoT</title>
+  <meta name="description" content="Configure clinical thresholds, emergency contacts, Firebase credentials and demo scenarios.">
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="app-container">
+    <header id="navbar-mount"></header>
+
+    <main class="main-wrapper">
+      <section class="dashboard-topbar">
+        <div>
+          <div class="status-badge normal" style="margin-bottom: 0.35rem;">SYSTEM CONFIGURATION</div>
+          <h1 style="font-size: 1.85rem; font-weight: 800;">Settings &amp; Caregiver Contacts</h1>
+          <p style="font-size: 0.9rem;">Manage patient thresholds, emergency contacts, Firebase RTDB credentials &amp; demo engine</p>
+        </div>
+
+        <div style="display:flex; gap:0.5rem;">
+          <button class="btn btn-primary" id="btn-save-all-settings">
+            <i data-lucide="save" style="width:16px;height:16px;"></i>
+            <span>Save Configuration</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Settings Grid -->
+      <div class="grid-dashboard">
+        <!-- Column 1: Thresholds & Emergency Rules -->
+        <div class="col-6">
+          <!-- Configurable Clinical Thresholds -->
+          <div class="glass-panel" style="padding:var(--space-lg); margin-bottom:var(--space-md);">
+            <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem; margin-bottom:var(--space-md);">
+              <i data-lucide="sliders" style="width:18px;height:18px;color:var(--cyan-primary);"></i>
+              <span>Physiological Anomaly Thresholds</span>
+            </h3>
+
+            <div style="font-size:0.75rem; color:var(--text-subtle); margin-bottom:var(--space-md); background:rgba(0, 240, 255, 0.05); padding:0.5rem 0.75rem; border-radius:6px; border-left:2px solid var(--cyan-primary);">
+              <strong>CLINICAL PROTOTYPE NOTICE:</strong> Thresholds configure when telemetry triggers Warning and Critical Emergency alerts. Clinical review is required before production deployment.
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md);">
+              <div class="form-group">
+                <label class="form-label" for="thresh-hr-low">Heart Rate Low Warning (BPM)</label>
+                <input type="number" id="thresh-hr-low" class="form-input" value="55" min="30" max="100">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="thresh-hr-high">Heart Rate High Warning (BPM)</label>
+                <input type="number" id="thresh-hr-high" class="form-input" value="105" min="80" max="180">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="thresh-spo2-low">SpO2 Low Warning (%)</label>
+                <input type="number" id="thresh-spo2-low" class="form-input" value="94" min="70" max="99">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="thresh-temp-high">Temp High Warning (°C)</label>
+                <input type="number" step="0.1" id="thresh-temp-high" class="form-input" value="37.5" min="35" max="42">
+              </div>
+
+              <div class="form-group" style="grid-column: span 2;">
+                <label class="form-label" for="thresh-fall-sec">Fall Confirmation Window (Seconds)</label>
+                <input type="number" id="thresh-fall-sec" class="form-input" value="30" min="5" max="120">
+                <span style="font-size:0.75rem; color:var(--text-subtle);">Seconds allowed for patient to dismiss accidental drop before emergency broadcast.</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Hackathon Demo Simulator Control -->
+          <div class="glass-panel" style="padding:var(--space-lg); border-color:rgba(245, 158, 11, 0.4);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+              <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem; color:#fbbf24;">
+                <i data-lucide="flask-conical" style="width:18px;height:18px;"></i>
+                <span>Hackathon Demo Simulator</span>
+              </h3>
+              <label style="display:flex; align-items:center; gap:0.5rem; cursor:pointer;">
+                <input type="checkbox" id="toggle-demo-mode" style="width:18px;height:18px;accent-color:#f59e0b;">
+                <span style="font-size:0.85rem; font-weight:700; color:#fbbf24;">DEMO ACTIVE</span>
+              </label>
+            </div>
+
+            <p style="font-size:0.85rem; margin-bottom:var(--space-md);">
+              Inject preset biometric scenarios to evaluate dashboard, fall alerts, and audio tones without physical sensors connected.
+            </p>
+
+            <div class="form-group">
+              <label class="form-label" for="select-demo-scenario">Active Demo Scenario</label>
+              <select id="select-demo-scenario" class="form-select">
+                <option value="NORMAL">Scenario 1: Normal Physiological Vitals (Resting)</option>
+                <option value="WARNING">Scenario 2: Warning State (Mild Pyrexia &amp; Tachycardia)</option>
+                <option value="CRITICAL">Scenario 3: Critical Hypoxia (SpO2 &lt; 90%)</option>
+                <option value="FALL">Scenario 4: Sudden Fall Impact (IMU Vector Trigger)</option>
+                <option value="SOS">Scenario 5: Deliberate Manual SOS Distress</option>
+              </select>
+            </div>
+
+            <button type="button" class="btn btn-warning btn-sm" id="btn-inject-scenario" style="width:100%;">
+              <i data-lucide="zap" style="width:15px;height:15px;"></i>
+              <span>Inject Scenario Now</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Column 2: Caregiver Contacts & Firebase Credentials -->
+        <div class="col-6">
+          <!-- Primary & Secondary Contacts -->
+          <div class="glass-panel" style="padding:var(--space-lg); margin-bottom:var(--space-md);">
+            <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem; margin-bottom:var(--space-md);">
+              <i data-lucide="users" style="width:18px;height:18px;color:#38bdf8;"></i>
+              <span>Caregiver Dispatch Network</span>
+            </h3>
+
+            <!-- Primary Caregiver -->
+            <div style="border-bottom:1px solid var(--border-subtle); padding-bottom:var(--space-md); margin-bottom:var(--space-md);">
+              <div style="font-size:0.75rem; text-transform:uppercase; color:var(--cyan-primary); font-weight:700; margin-bottom:0.5rem;">
+                Primary Caregiver (Notified First)
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="contact-primary-name">Full Name</label>
+                <input type="text" id="contact-primary-name" class="form-input" value="Dr. Ramesh Sharma">
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md);">
+                <div class="form-group">
+                  <label class="form-label" for="contact-primary-phone">Phone Number</label>
+                  <input type="tel" id="contact-primary-phone" class="form-input" value="+91 98765 43210">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="contact-primary-email">Emergency Email</label>
+                  <input type="email" id="contact-primary-email" class="form-input" value="doctor@alphasquared.org">
+                </div>
+              </div>
+            </div>
+
+            <!-- Secondary Contact -->
+            <div>
+              <div style="font-size:0.75rem; text-transform:uppercase; color:#94a3b8; font-weight:700; margin-bottom:0.5rem;">
+                Secondary Next of Kin
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="contact-sec-name">Full Name</label>
+                <input type="text" id="contact-sec-name" class="form-input" value="Amit Doe">
+              </div>
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:var(--space-md);">
+                <div class="form-group">
+                  <label class="form-label" for="contact-sec-phone">Phone Number</label>
+                  <input type="tel" id="contact-sec-phone" class="form-input" value="+91 91234 56789">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="contact-sec-email">Notification Email</label>
+                  <input type="email" id="contact-sec-email" class="form-input" value="family@alphasquared.org">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Firebase Cloud Database Configuration -->
+          <div class="glass-panel" style="padding:var(--space-lg);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+              <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+                <i data-lucide="database" style="width:18px;height:18px;color:#fbbf24;"></i>
+                <span>Firebase RTDB Cloud Link</span>
+              </h3>
+              <span id="fb-status-badge" class="status-badge normal">READY / PROTOTYPE</span>
+            </div>
+
+            <p style="font-size:0.85rem; margin-bottom:var(--space-md);">
+              Enter custom Firebase Realtime Database parameters to connect to your live project backend.
+            </p>
+
+            <div class="form-group">
+              <label class="form-label" for="cfg-fb-dburl">Realtime Database URL</label>
+              <input type="url" id="cfg-fb-dburl" class="form-input" placeholder="https://your-project-default-rtdb.firebaseio.com">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="cfg-fb-apikey">Firebase API Key</label>
+              <input type="password" id="cfg-fb-apikey" class="form-input" placeholder="AIzaSy...">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="cfg-fb-projid">Firebase Project ID</label>
+              <input type="text" id="cfg-fb-projid" class="form-input" placeholder="alpha-squared-iot">
+            </div>
+
+            <div style="display:flex; justify-content:flex-end;">
+              <button class="btn btn-secondary btn-sm" id="btn-reset-firebase">
+                <span>Reset to Default Template</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-meta">
+          <div class="inst-name">ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</div>
+          <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
+        </div>
+        <ul class="footer-links">
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="emergency.html">Emergency Center</a></li>
+          <li><a href="location.html">Live GPS</a></li>
+          <li><a href="history.html">History</a></li>
+          <li><a href="device.html">Hardware Diagnostics</a></li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+  <script type="module" src="js/pages/settings.js"></script>
+</body>
+</html>
+
