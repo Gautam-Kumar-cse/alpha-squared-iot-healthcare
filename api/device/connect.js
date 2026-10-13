@@ -6,7 +6,7 @@
  * NEVER returns private API keys to the frontend client.
  */
 
-import deviceStore from './device-store.js';
+import deviceStore from '../../lib/device/device-store.js';
 
 export function isSafeUrl(urlString) {
   try {

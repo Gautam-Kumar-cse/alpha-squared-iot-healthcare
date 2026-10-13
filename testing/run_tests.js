@@ -7,11 +7,11 @@
 import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
-import deviceStore from '../api/device/device-store.js';
+import deviceStore from '../lib/device/device-store.js';
 import ingestHandler from '../api/device/ingest.js';
 import testHandler from '../api/device/test.js';
 import connectHandler, { isSafeUrl } from '../api/device/connect.js';
-import { evaluatePatientZones, CLINICAL_ZONES } from '../api/device/zone-evaluator.js';
+import { evaluatePatientZones, CLINICAL_ZONES } from '../lib/device/zone-evaluator.js';
 import sendSmsHandler from '../api/alerts/send-sms.js';
 import { zoneEngine, ZoneEngine } from '../web/js/services/zone-engine.js';
 import healthHandler from '../api/health.js';
@@ -19,8 +19,8 @@ import latestReadingsHandler from '../api/readings/latest.js';
 import historyReadingsHandler from '../api/readings/history.js';
 import rootIngestHandler, { validateIngestionData, DEFAULT_DEV_API_KEY } from '../api/ingest.js';
 import deviceStatusHandler from '../api/device/status.js';
-import mongoClient, { MONGO_STATUS } from '../api/db/mongo-client.js';
-import migrationService from '../api/db/migration.js';
+import mongoClient, { MONGO_STATUS } from '../lib/db/mongo-client.js';
+import migrationService from '../lib/db/migration.js';
 
 console.log('====================================================');
 console.log('  ALPHA SQUARED IoT HEALTHCARE — VERIFICATION SUITE ');
@@ -167,7 +167,10 @@ const requiredFiles = [
   'api/device/history.js',
   'api/device/ingest.js',
   'api/device/test.js',
-  'api/device/device-store.js',
+  'lib/device/device-store.js',
+  'lib/device/zone-evaluator.js',
+  'lib/db/mongo-client.js',
+  'lib/db/migration.js',
   'web/js/services/hardware-api-service.js',
   'database.rules.json',
   'vercel.json',
@@ -1425,6 +1428,48 @@ await runAsyncTest('Safe Migration Service: Dry run completes safely with zero d
   assert.strictEqual(plan.dryRun, true);
   assert.ok(plan.totalLocalReadings >= 40);
   assert.ok(plan.message.includes('Dry run completed'));
+});
+
+// ---------------------------------------------------------
+// 19. Vercel Hobby Plan Serverless Function Quota Tests (<= 12 Functions)
+// ---------------------------------------------------------
+runTest('Vercel Quota: api/ directory contains exactly <= 12 serverless functions', () => {
+  const apiDir = path.resolve(process.cwd(), 'api');
+  function getJsFiles(dir) {
+    let files = [];
+    const entries = fs.readdirSync(dir, { withFileTypes: true });
+    for (const entry of entries) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        files = files.concat(getJsFiles(fullPath));
+      } else if (entry.isFile() && (entry.name.endsWith('.js') || entry.name.endsWith('.ts'))) {
+        files.push(path.relative(apiDir, fullPath).replace(/\\/g, '/'));
+      }
+    }
+    return files;
+  }
+
+  const serverlessFunctions = getJsFiles(apiDir);
+  assert.ok(
+    serverlessFunctions.length <= 12,
+    `Vercel Hobby plan quota exceeded! Expected <= 12 functions, found ${serverlessFunctions.length}: ${JSON.stringify(serverlessFunctions)}`
+  );
+  assert.strictEqual(serverlessFunctions.length, 12, `Expected exactly 12 serverless functions, found ${serverlessFunctions.length}`);
+
+  // Confirm helpers are NOT in api
+  assert.ok(!serverlessFunctions.includes('db/mongo-client.js'), 'mongo-client.js must not be in api/');
+  assert.ok(!serverlessFunctions.includes('db/migration.js'), 'migration.js must not be in api/');
+  assert.ok(!serverlessFunctions.includes('device/device-store.js'), 'device-store.js must not be in api/');
+  assert.ok(!serverlessFunctions.includes('device/zone-evaluator.js'), 'zone-evaluator.js must not be in api/');
+});
+
+runTest('Vercel Quota: All 4 helper modules are located safely in lib/ and export valid utilities', () => {
+  const libDir = path.resolve(process.cwd(), 'lib');
+  assert.ok(fs.existsSync(path.join(libDir, 'device/device-store.js')), 'lib/device/device-store.js missing');
+  assert.ok(fs.existsSync(path.join(libDir, 'device/zone-evaluator.js')), 'lib/device/zone-evaluator.js missing');
+  assert.ok(fs.existsSync(path.join(libDir, 'db/mongo-client.js')), 'lib/db/mongo-client.js missing');
+  assert.ok(fs.existsSync(path.join(libDir, 'db/migration.js')), 'lib/db/migration.js missing');
+  assert.ok(!fs.existsSync(path.resolve(process.cwd(), 'api/db')), 'api/db directory should not exist');
 });
 
 // ---------------------------------------------------------

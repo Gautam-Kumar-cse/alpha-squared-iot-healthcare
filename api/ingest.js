@@ -13,8 +13,8 @@
  * 6. Clinical Green/Yellow/Red zone evaluation
  */
 
-import deviceStore from './device/device-store.js';
-import { evaluatePatientZones } from './device/zone-evaluator.js';
+import deviceStore from '../lib/device/device-store.js';
+import { evaluatePatientZones } from '../lib/device/zone-evaluator.js';
 import sendSmsHandler from './alerts/send-sms.js';
 
 export const DEFAULT_DEV_API_KEY = 'ALPHA_SQUARED_HARDWARE_SECRET_2026';

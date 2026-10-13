@@ -15,8 +15,8 @@
  * - Autonomous forwarding to Firebase Realtime Database when configured
  */
 
-import deviceStore from './device-store.js';
-import { evaluatePatientZones } from './zone-evaluator.js';
+import deviceStore from '../../lib/device/device-store.js';
+import { evaluatePatientZones } from '../../lib/device/zone-evaluator.js';
 import sendSmsHandler from '../alerts/send-sms.js';
 
 export default async function handler(req, res) {

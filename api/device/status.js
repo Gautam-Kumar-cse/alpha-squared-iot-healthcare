@@ -6,7 +6,7 @@
  * battery health, RSSI signal, firmware, and sensor subsystems status.
  */
 
-import deviceStore from './device-store.js';
+import deviceStore from '../../lib/device/device-store.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {

@@ -6,7 +6,7 @@
  * Returns clean 'DEVICE_NOT_CONNECTED' or 'NO_DATA' when device is inactive.
  */
 
-import deviceStore from './device-store.js';
+import deviceStore from '../../lib/device/device-store.js';
 
 export default async function handler(req, res) {
   // Support both GET (polling) and POST (with headers/payload)
