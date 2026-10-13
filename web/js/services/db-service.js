@@ -314,7 +314,247 @@ class RealtimeDatabaseService {
       }
     };
   }
+  /**
+   * Notification Logs Audit Trail
+   */
+  async recordNotificationLog(patientId = 'PATIENT-001', logEntry) {
+    const logId = `NOTIF-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const fullEntry = {
+      id: logId,
+      patientId,
+      timestamp: logEntry.timestamp || Date.now(),
+      zone: logEntry.zone || 'GREEN',
+      reason: logEntry.reason || 'Telemetry Update',
+      vitals: logEntry.vitals || {},
+      recipients: logEntry.recipients || [],
+      status: logEntry.status || 'DELIVERED', // DELIVERED, SIMULATED, SUPPRESSED, FAILED
+      dataSource: logEntry.dataSource || 'DEMO', // DEMO or REAL
+      locationIncluded: Boolean(logEntry.locationIncluded),
+      mapsUrl: logEntry.mapsUrl || null,
+      summary: logEntry.summary || '',
+      isTest: Boolean(logEntry.isTest)
+    };
+
+    if (this.isFirebaseReady && this.rtdb) {
+      try {
+        const notifRef = this.fbRef(this.rtdb, `patients/${patientId}/notifications/${logId}`);
+        await this.fbSet(notifRef, fullEntry);
+      } catch (e) {
+        console.warn('Firebase notification log error:', e);
+      }
+    }
+
+    const storageKey = `rtdb_patients_${patientId}_notifications`;
+    let list = [];
+    try {
+      const existing = localStorage.getItem(storageKey);
+      if (existing) list = JSON.parse(existing);
+    } catch {}
+
+    list.unshift(fullEntry);
+    if (list.length > 50) list = list.slice(0, 50); // Keep last 50
+    localStorage.setItem(storageKey, JSON.stringify(list));
+
+    const key = `notifications_${patientId}`;
+    if (this.listeners.has(key)) {
+      this.listeners.get(key).forEach(cb => cb(list));
+    }
+
+    return fullEntry;
+  }
+
+  getNotificationLogs(patientId = 'PATIENT-001', limit = 20) {
+    const storageKey = `rtdb_patients_${patientId}_notifications`;
+    try {
+      const existing = localStorage.getItem(storageKey);
+      if (existing) {
+        const list = JSON.parse(existing);
+        return Array.isArray(list) ? list.slice(0, limit) : [];
+      }
+    } catch {}
+    return [];
+  }
+
+  subscribeToNotificationLogs(patientId = 'PATIENT-001', callback) {
+    const key = `notifications_${patientId}`;
+    if (!this.listeners.has(key)) this.listeners.set(key, new Set());
+    this.listeners.get(key).add(callback);
+
+    callback(this.getNotificationLogs(patientId));
+
+    return () => {
+      if (this.listeners.has(key)) {
+        this.listeners.get(key).delete(callback);
+      }
+    };
+  }
+
+  /**
+   * Phone Call Action Audit Logging
+   */
+  async recordCallAction(patientId = 'PATIENT-001', callEntry) {
+    const callId = `CALL-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const fullEntry = {
+      id: callId,
+      patientId,
+      timestamp: callEntry.timestamp || Date.now(),
+      target: callEntry.target || 'EMERGENCY_CONTACT', // PARENT_GUARDIAN or EMERGENCY_CONTACT
+      name: callEntry.name || 'Unknown Contact',
+      phone: callEntry.phone || '',
+      relation: callEntry.relation || 'Contact',
+      status: callEntry.status || 'DIALER_LAUNCHED', // DIALER_LAUNCHED or CANCELLED
+      confirmed: Boolean(callEntry.confirmed),
+      vitalsSnapshot: callEntry.vitalsSnapshot || null,
+      disclaimerAcknowledged: true
+    };
+
+    const storageKey = `rtdb_patients_${patientId}_call_actions`;
+    let list = [];
+    try {
+      const existing = localStorage.getItem(storageKey);
+      if (existing) list = JSON.parse(existing);
+    } catch {}
+
+    list.unshift(fullEntry);
+    if (list.length > 50) list = list.slice(0, 50);
+    localStorage.setItem(storageKey, JSON.stringify(list));
+
+    return fullEntry;
+  }
+
+  getCallActions(patientId = 'PATIENT-001', limit = 20) {
+    const storageKey = `rtdb_patients_${patientId}_call_actions`;
+    try {
+      const existing = localStorage.getItem(storageKey);
+      if (existing) {
+        const list = JSON.parse(existing);
+        return Array.isArray(list) ? list.slice(0, limit) : [];
+      }
+    } catch {}
+    return [];
+  }
+
+  /**
+   * Privacy & Location Consent Settings
+   */
+  getLocationSharingConsent(patientId = 'PATIENT-001') {
+    const val = localStorage.getItem(`alphasquared_location_sharing_consent_${patientId}`);
+    if (val === null) return true; // Default enabled for patient safety
+    return val === 'true';
+  }
+
+  setLocationSharingConsent(patientId = 'PATIENT-001', enabled = true) {
+    localStorage.setItem(`alphasquared_location_sharing_consent_${patientId}`, String(Boolean(enabled)));
+  }
+
+  getPhoneMaskingSetting() {
+    const val = localStorage.getItem('alphasquared_phone_masking');
+    if (val === null) return true; // Default masked for privacy protection
+    return val === 'true';
+  }
+
+  setPhoneMaskingSetting(enabled = true) {
+    localStorage.setItem('alphasquared_phone_masking', String(Boolean(enabled)));
+  }
+
+  /**
+   * Mask phone number for display protection (e.g. +91 ••••• ••210)
+   */
+  maskPhoneNumber(phone) {
+    if (!phone || typeof phone !== 'string') return '';
+    const clean = phone.trim();
+    if (clean.length <= 4) return clean;
+    // Keep first 3 chars (e.g. +91 or first 2) and last 3 chars
+    const start = clean.slice(0, 4);
+    const end = clean.slice(-3);
+    const maskedLength = Math.max(3, clean.length - 7);
+    return `${start} ${'•'.repeat(maskedLength)} ${end}`;
+  }
+
+  /**
+   * Parent/Guardian & Emergency Contact Management
+   */
+  getParentGuardianContact() {
+    try {
+      const saved = localStorage.getItem('alphasquared_parent_guardian_contact');
+      if (saved) return JSON.parse(saved);
+      // Fallback check for legacy keys
+      const legacyName = localStorage.getItem('alphasquared_primary_caregiver_name');
+      const legacyPhone = localStorage.getItem('alphasquared_primary_caregiver_phone');
+      if (legacyName || legacyPhone) {
+        return {
+          name: legacyName || '',
+          phone: legacyPhone || '',
+          relation: 'Parent / Guardian',
+          email: localStorage.getItem('alphasquared_primary_caregiver_email') || ''
+        };
+      }
+    } catch {}
+    return null;
+  }
+
+  saveParentGuardianContact(contact) {
+    const payload = {
+      name: (contact.name || '').trim(),
+      phone: (contact.phone || '').trim(),
+      relation: (contact.relation || 'Parent / Guardian').trim(),
+      email: (contact.email || '').trim(),
+      updatedAt: Date.now()
+    };
+    localStorage.setItem('alphasquared_parent_guardian_contact', JSON.stringify(payload));
+    // Mirror to legacy keys for compatibility
+    if (payload.name) localStorage.setItem('alphasquared_primary_caregiver_name', payload.name);
+    if (payload.phone) localStorage.setItem('alphasquared_primary_caregiver_phone', payload.phone);
+    return payload;
+  }
+
+  removeParentGuardianContact() {
+    localStorage.removeItem('alphasquared_parent_guardian_contact');
+    localStorage.removeItem('alphasquared_primary_caregiver_name');
+    localStorage.removeItem('alphasquared_primary_caregiver_phone');
+  }
+
+  getEmergencyContact() {
+    try {
+      const saved = localStorage.getItem('alphasquared_emergency_contact');
+      if (saved) return JSON.parse(saved);
+      // Fallback check for legacy keys
+      const legacyName = localStorage.getItem('alphasquared_sec_contact_name');
+      const legacyPhone = localStorage.getItem('alphasquared_sec_contact_phone');
+      if (legacyName || legacyPhone) {
+        return {
+          name: legacyName || '',
+          phone: legacyPhone || '',
+          relation: 'Emergency Contact',
+          email: localStorage.getItem('alphasquared_sec_contact_email') || ''
+        };
+      }
+    } catch {}
+    return null;
+  }
+
+  saveEmergencyContact(contact) {
+    const payload = {
+      name: (contact.name || '').trim(),
+      phone: (contact.phone || '').trim(),
+      relation: (contact.relation || 'Emergency Contact').trim(),
+      email: (contact.email || '').trim(),
+      updatedAt: Date.now()
+    };
+    localStorage.setItem('alphasquared_emergency_contact', JSON.stringify(payload));
+    // Mirror to legacy keys for compatibility
+    if (payload.name) localStorage.setItem('alphasquared_sec_contact_name', payload.name);
+    if (payload.phone) localStorage.setItem('alphasquared_sec_contact_phone', payload.phone);
+    return payload;
+  }
+
+  removeEmergencyContact() {
+    localStorage.removeItem('alphasquared_emergency_contact');
+    localStorage.removeItem('alphasquared_sec_contact_name');
+    localStorage.removeItem('alphasquared_sec_contact_phone');
+  }
 }
 
 export const dbService = new RealtimeDatabaseService();
+
 

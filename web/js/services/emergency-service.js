@@ -122,6 +122,45 @@ export class EmergencyDetector {
 
   async dispatchServerlessSms(patientId, event, zone = 'YELLOW', triggers = []) {
     try {
+      const parentContact = dbService.getParentGuardianContact();
+      const emergencyContact = dbService.getEmergencyContact();
+      const locationSharingConsent = dbService.getLocationSharingConsent(patientId);
+      const patientPhone = localStorage.getItem('alphasquared_patient_phone') || null;
+
+      const contacts = [];
+      if (parentContact && parentContact.phone) {
+        contacts.push({
+          name: parentContact.name || 'Parent / Guardian',
+          phone: parentContact.phone,
+          role: 'PARENT_GUARDIAN',
+          relation: parentContact.relation || 'Parent / Guardian'
+        });
+      }
+      if (emergencyContact && emergencyContact.phone) {
+        contacts.push({
+          name: emergencyContact.name || 'Emergency Contact',
+          phone: emergencyContact.phone,
+          role: 'EMERGENCY_CONTACT',
+          relation: emergencyContact.relation || 'Emergency Contact'
+        });
+      }
+
+      // Fallback if contacts not configured yet
+      if (contacts.length === 0) {
+        const legacyPrimaryPhone = localStorage.getItem('alphasquared_primary_caregiver_phone');
+        if (legacyPrimaryPhone) {
+          contacts.push({
+            name: localStorage.getItem('alphasquared_primary_caregiver_name') || 'Primary Caregiver',
+            phone: legacyPrimaryPhone,
+            role: 'PARENT_GUARDIAN'
+          });
+        }
+      }
+
+      const isDemoActive = localStorage.getItem('alphasquared_demo_active') === 'true' ||
+                           sessionStorage.getItem('alphasquared_demo_active') === 'true';
+      const dataSource = event.dataSource || (isDemoActive ? 'DEMO' : 'REAL');
+
       const response = await fetch('/api/alerts/send-sms', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -136,23 +175,31 @@ export class EmergencyDetector {
             longitude: event.longitude,
             source: event.locationSource
           },
-          patientPhone: localStorage.getItem('alphasquared_patient_phone') || null,
-          contacts: [
-            {
-              name: localStorage.getItem('alphasquared_primary_caregiver_name') || 'Dr. Ramesh Sharma',
-              phone: localStorage.getItem('alphasquared_primary_caregiver_phone') || '+91 98765 43210',
-              role: 'PRIMARY_CAREGIVER'
-            },
-            {
-              name: localStorage.getItem('alphasquared_sec_contact_name') || 'Amit Doe',
-              phone: localStorage.getItem('alphasquared_sec_contact_phone') || '+91 91234 56789',
-              role: 'SECONDARY_KIN'
-            }
-          ]
+          locationSharingConsent,
+          patientPhone,
+          contacts,
+          dataSource
         })
       });
 
       const data = await response.json().catch(() => ({}));
+
+      // Log notification to database audit trail
+      if (data && data.success !== undefined) {
+        await dbService.recordNotificationLog(patientId, {
+          timestamp: Date.now(),
+          zone,
+          reason: event.reason || (triggers.length ? triggers.map(t => t.label).join(', ') : 'Alert Triggered'),
+          vitals: event.vitalsAtEvent || {},
+          recipients: data.recipients || contacts.map(c => `${c.name} (${c.phone})`),
+          status: data.isLiveGateway ? 'DELIVERED' : (data.simulated ? 'SIMULATED' : (data.suppressed ? 'SUPPRESSED' : 'DELIVERED')),
+          dataSource,
+          locationIncluded: Boolean(data.location && locationSharingConsent),
+          mapsUrl: (data.location && locationSharingConsent) ? `https://maps.google.com/?q=${data.location.latitude},${data.location.longitude}` : null,
+          summary: data.notice || (data.suppressed ? `Suppressed: ${data.reason}` : `Dispatched via ${data.provider || 'Gateway'}`)
+        });
+      }
+
       if (data.success) {
         console.log('[SMS DISPATCH REPORT]', data);
       }

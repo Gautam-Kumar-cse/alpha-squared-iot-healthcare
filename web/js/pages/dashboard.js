@@ -11,6 +11,7 @@ import { hardwareApiService } from '../services/hardware-api-service.js';
 import { demoSimulator } from '../services/demo-simulator.js';
 import { dbService } from '../services/db-service.js';
 import { zoneEngine, CLINICAL_ZONES } from '../services/zone-engine.js';
+import { openCallConfirmationModal } from '../components/call-modal.js';
 
 let telemetryChart = null;
 const maxChartPoints = 20;
@@ -32,6 +33,7 @@ export function initDashboard() {
 
   initChart();
   initSosIntegration();
+  initCallingButtons();
   initHardwareConnectionUi();
   initDemoModeControls();
   initUnitToggles();
@@ -1194,4 +1196,56 @@ function addEmergencyTableEntry(evt) {
   tbody.prepend(row);
 }
 
+// ==============================================================================
+// 7. Parent & Emergency Calling Quick Integration
+// ==============================================================================
+
+function initCallingButtons() {
+  const btnParent = document.getElementById('dash-btn-call-parent');
+  const btnEmergency = document.getElementById('dash-btn-call-emergency');
+
+  if (btnParent) {
+    btnParent.addEventListener('click', () => {
+      const parentContact = dbService.getParentGuardianContact();
+      if (!parentContact || !parentContact.phone) {
+        showToast('No Parent/Guardian phone number configured. Please configure in Settings.', 'warning');
+        return;
+      }
+      openCallConfirmationModal({
+        target: 'PARENT_GUARDIAN',
+        name: parentContact.name || 'Parent / Guardian',
+        phone: parentContact.phone,
+        relation: parentContact.relation || 'Primary Guardian',
+        vitalsSnapshot: {
+          heartRate: document.getElementById('val-heart-rate')?.textContent,
+          temperature: currentTempCelsius || document.getElementById('val-temp')?.textContent
+        },
+        patientId: 'PATIENT-001'
+      });
+    });
+  }
+
+  if (btnEmergency) {
+    btnEmergency.addEventListener('click', () => {
+      const emgContact = dbService.getEmergencyContact();
+      if (!emgContact || !emgContact.phone) {
+        showToast('No Emergency Contact phone number configured. Please configure in Settings.', 'warning');
+        return;
+      }
+      openCallConfirmationModal({
+        target: 'EMERGENCY_CONTACT',
+        name: emgContact.name || 'Emergency Contact',
+        phone: emgContact.phone,
+        relation: emgContact.relation || 'Emergency Contact',
+        vitalsSnapshot: {
+          heartRate: document.getElementById('val-heart-rate')?.textContent,
+          temperature: currentTempCelsius || document.getElementById('val-temp')?.textContent
+        },
+        patientId: 'PATIENT-001'
+      });
+    });
+  }
+}
+
 document.addEventListener('DOMContentLoaded', initDashboard);
+

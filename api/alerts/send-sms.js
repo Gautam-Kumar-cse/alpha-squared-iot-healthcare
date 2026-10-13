@@ -20,6 +20,16 @@ const alertCooldownCache = new Map();
 const recentDispatchesAudit = [];
 const MAX_AUDIT_LOGS = 50;
 
+export function hasValidCoordinates(loc) {
+  if (!loc) return false;
+  const lat = Number(loc.latitude ?? loc.lat);
+  const lng = Number(loc.longitude ?? loc.lng);
+  if (isNaN(lat) || isNaN(lng)) return false;
+  if (lat === 0 && lng === 0) return false;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
+  return true;
+}
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({
@@ -37,7 +47,12 @@ export default async function handler(req, res) {
       vitals = {},
       location = null,
       contacts = [],
+      parentContact = null,
+      emergencyContact = null,
       patientPhone = null,
+      isDemo = false,
+      dataSource = null,
+      locationSharingConsent = true,
       isTest = false,
       bypassCooldown = false,
       cooldownSeconds = 300 // default 5 minutes
@@ -47,33 +62,122 @@ export default async function handler(req, res) {
     const timestampStr = new Date(now).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
 
     // -------------------------------------------------------------
-    // 1. Resolve Recipients
+    // 0. Green Zone Handling (Normal - No Unnecessary Alerts)
     // -------------------------------------------------------------
-    const recipientList = [];
-
-    // Patient's own phone for Yellow zone cautionary advice
-    if (zone === 'YELLOW' && patientPhone) {
-      recipientList.push({
-        role: 'PATIENT',
-        phone: patientPhone,
-        name: patientName
+    if (zone === 'GREEN' && !isTest) {
+      return res.status(200).json({
+        success: true,
+        status: 'NORMAL_STATUS',
+        message: 'Patient biometrics are in Green Zone (Normal). Automatic alerts suppressed to prevent notification fatigue.',
+        zone: 'GREEN',
+        dispatchedAt: null,
+        deliveries: []
       });
     }
 
-    // Caregivers & Emergency contacts
-    if (Array.isArray(contacts) && contacts.length > 0) {
-      contacts.forEach(c => {
-        if (c.phone) {
+    // -------------------------------------------------------------
+    // 1. Gateway Provider Detection & Simulation Mode
+    // -------------------------------------------------------------
+    const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
+    const fast2smsKey = process.env.FAST2SMS_API_KEY;
+    const webhookUrl = process.env.SMS_WEBHOOK_URL;
+
+    let provider = 'SIMULATED_GATEWAY';
+    let isLiveGateway = false;
+
+    if (twilioSid && twilioToken && twilioFrom) {
+      provider = 'TWILIO_REST_API';
+      isLiveGateway = true;
+    } else if (fast2smsKey) {
+      provider = 'FAST2SMS_API';
+      isLiveGateway = true;
+    } else if (webhookUrl) {
+      provider = 'CUSTOM_SMS_WEBHOOK';
+      isLiveGateway = true;
+    }
+
+    const isDemoMode = Boolean(isDemo || dataSource === 'DEMO');
+    const dataSourceLabel = isDemoMode ? 'DEMO' : 'REAL';
+
+    // -------------------------------------------------------------
+    // 2. Resolve Recipients According to Clinical Zone
+    // -------------------------------------------------------------
+    const recipientList = [];
+
+    if (zone === 'YELLOW') {
+      // Yellow: Notify Patient and configured Parent/Guardian
+      if (patientPhone) {
+        recipientList.push({
+          role: 'PATIENT',
+          phone: patientPhone,
+          name: patientName
+        });
+      }
+      if (parentContact && parentContact.phone) {
+        recipientList.push({
+          role: 'PARENT_GUARDIAN',
+          phone: parentContact.phone,
+          name: parentContact.name || 'Parent / Guardian'
+        });
+      } else if (Array.isArray(contacts) && contacts.length > 0) {
+        const parent = contacts.find(c => {
+          const r = (c.role || '').toUpperCase();
+          return r.includes('PARENT') || r.includes('PRIMARY');
+        }) || contacts[0];
+        if (parent && parent.phone) {
           recipientList.push({
-            role: c.role || 'CAREGIVER',
-            phone: c.phone,
-            name: c.name || 'Emergency Contact'
+            role: parent.role || 'PARENT_GUARDIAN',
+            phone: parent.phone,
+            name: parent.name || 'Parent / Guardian'
           });
         }
-      });
+      } else if (process.env.PRIMARY_CAREGIVER_PHONE) {
+        recipientList.push({
+          role: 'PRIMARY_CAREGIVER',
+          phone: process.env.PRIMARY_CAREGIVER_PHONE,
+          name: 'Primary Caregiver'
+        });
+      }
     } else {
-      // Fallback from environment variables
-      const defaultCaregiverPhone = process.env.PRIMARY_CAREGIVER_PHONE || '+91 98765 43210';
+      // Red (Critical) or Test: Notify Emergency Contact and Parent/Guardian
+      if (emergencyContact && emergencyContact.phone) {
+        recipientList.push({
+          role: 'EMERGENCY_CONTACT',
+          phone: emergencyContact.phone,
+          name: emergencyContact.name || 'Emergency Responder'
+        });
+      }
+      if (parentContact && parentContact.phone) {
+        recipientList.push({
+          role: 'PARENT_GUARDIAN',
+          phone: parentContact.phone,
+          name: parentContact.name || 'Parent / Guardian'
+        });
+      }
+      if (Array.isArray(contacts) && contacts.length > 0) {
+        contacts.forEach(c => {
+          if (c.phone) {
+            recipientList.push({
+              role: c.role || 'CAREGIVER',
+              phone: c.phone,
+              name: c.name || 'Emergency Contact'
+            });
+          }
+        });
+      }
+      if (recipientList.length === 0 && process.env.PRIMARY_CAREGIVER_PHONE) {
+        recipientList.push({
+          role: 'PRIMARY_CAREGIVER',
+          phone: process.env.PRIMARY_CAREGIVER_PHONE,
+          name: 'Primary Caregiver'
+        });
+      }
+    }
+
+    if (recipientList.length === 0) {
+      const defaultCaregiverPhone = process.env.PRIMARY_CAREGIVER_PHONE || '+15550198332';
       recipientList.push({
         role: 'PRIMARY_CAREGIVER',
         phone: defaultCaregiverPhone,
@@ -93,7 +197,7 @@ export default async function handler(req, res) {
     }
 
     // -------------------------------------------------------------
-    // 2. Cooldown & Anti-Spam Duplicate Suppression
+    // 3. Cooldown & Anti-Spam Duplicate Suppression
     // -------------------------------------------------------------
     const primaryTriggerKey = triggers.map(t => `${t.parameter || 'vital'}_${t.zone || zone}`).sort().join(';') || zone;
     const cooldownKey = `${patientId}_${zone}_${primaryTriggerKey}`;
@@ -114,68 +218,66 @@ export default async function handler(req, res) {
     }
 
     // -------------------------------------------------------------
-    // 3. Compose SMS Text According to Clinical Zone
+    // 4. GPS & Location Privacy Validation
+    // -------------------------------------------------------------
+    let locationText = 'Coordinates Pending';
+    let gmapsUrl = '';
+
+    if (!locationSharingConsent) {
+      locationText = 'Location Sharing: Disabled by user privacy consent';
+      gmapsUrl = '';
+    } else if (hasValidCoordinates(location)) {
+      const lat = Number(location.latitude ?? location.lat);
+      const lng = Number(location.longitude ?? location.lng);
+      locationText = `${lat.toFixed(4)}° N, ${lng.toFixed(4)}° E`;
+      gmapsUrl = `https://maps.google.com/?q=${lat},${lng}`;
+    }
+
+    // -------------------------------------------------------------
+    // 5. Compose SMS Text According to Clinical Zone
     // -------------------------------------------------------------
     let smsBody = '';
+
+    const hrVal = vitals.heartRate?.value ?? vitals.heartRate;
+    const hrStr = hrVal != null ? `${hrVal} BPM` : 'N/A';
+    const tempVal = vitals.temperature?.celsius ?? (typeof vitals.temperature === 'number' ? vitals.temperature : null);
+    const tempStr = tempVal != null ? `${tempVal}°C` : (vitals.temperature ? `${vitals.temperature}°C` : 'N/A');
+    const bpStr = vitals.bloodPressure?.systolic ? `${vitals.bloodPressure.systolic}/${vitals.bloodPressure.diastolic} mmHg` : null;
+
+    const simPrefix = (!isLiveGateway || isDemoMode) ? '[SIMULATED DEMO NOTIFICATION]\n' : '';
 
     if (isTest) {
       smsBody = `[ALPHA SQUARED TEST SMS] Hardware alert system check for ${patientName}. SMS Gateway is verified and functional. Timestamp: ${timestampStr}. Team Alpha Squared, GP Gaya.`;
     } else if (zone === 'RED') {
       const reasonsList = triggers.map(t => `${t.label || t.parameter}: ${t.value || 'ANOMALY'}`).join(', ') || 'Critical Physiological Vitals Detected';
-      
-      let gmapsUrl = 'Coordinates Pending';
-      if (location && location.latitude && location.longitude) {
-        gmapsUrl = `https://maps.google.com/?q=${location.latitude},${location.longitude}`;
-      } else if (location && location.lat && location.lng) {
-        gmapsUrl = `https://maps.google.com/?q=${location.lat},${location.lng}`;
-      }
+      const locDisplay = gmapsUrl ? gmapsUrl : locationText;
+      const bpPart = bpStr ? ` | BP: ${bpStr}` : '';
+      const spo2Val = vitals.spo2?.value ?? vitals.spo2;
+      const spo2Part = spo2Val != null ? ` | SpO2: ${spo2Val}%` : '';
 
-      const hrStr = vitals.heartRate?.value ?? vitals.heartRate ?? 'N/A';
-      const spo2Str = vitals.spo2?.value ?? vitals.spo2 ?? 'N/A';
-      const tempStr = vitals.temperature?.celsius != null ? `${vitals.temperature.celsius}°C` : (vitals.temperature ? `${vitals.temperature}°C` : 'N/A');
-      const bpStr = vitals.bloodPressure?.systolic ? `${vitals.bloodPressure.systolic}/${vitals.bloodPressure.diastolic} mmHg` : 'N/A';
-
-      smsBody = `🚨 URGENT EMERGENCY ALERT: ${patientName} is in RED ZONE (Critical)!\n` +
+      smsBody = `${simPrefix}🚨 URGENT EMERGENCY ALERT: ${patientName} is in RED ZONE (Critical)!\n` +
                 `Reason: ${reasonsList}\n` +
-                `Snapshot: HR: ${hrStr} BPM | SpO2: ${spo2Str}% | Temp: ${tempStr} | BP: ${bpStr}\n` +
-                `GPS Location: ${gmapsUrl}\n` +
+                `Snapshot: HR: ${hrStr}${spo2Part} | Temp: ${tempStr}${bpPart}\n` +
+                `Device Source: ${dataSourceLabel}\n` +
+                `GPS Location: ${locDisplay}\n` +
                 `Time: ${timestampStr}\n` +
                 `ACTION: Immediate caregiver check or emergency triage (Call 108) required.`;
     } else {
       // YELLOW ZONE (Caution / Warning)
       const warningDetails = triggers.map(t => `${t.label || t.parameter}: ${t.value || 'Caution'}`).join(', ') || 'Caution vital threshold reached';
       const recommendedAction = triggers[0]?.recommendedAction || 'Rest in comfortable position, drink water, recheck vitals in 15 minutes. Contact caregiver or physician if symptoms persist.';
+      const locPart = gmapsUrl ? `\nLocation: ${gmapsUrl}` : (!locationSharingConsent ? `\nLocation: Disabled by user privacy consent` : '');
 
-      smsBody = `⚠️ ALPHA SQUARED ALERT: YELLOW ZONE (Warning) for ${patientName}.\n` +
+      smsBody = `${simPrefix}⚠️ ALPHA SQUARED ALERT: YELLOW ZONE (Warning) for ${patientName}.\n` +
                 `Vitals Notice: ${warningDetails}\n` +
-                `Recommended Precaution: ${recommendedAction}\n` +
+                `Vitals: Heart Rate: ${hrStr} | Body Temp: ${tempStr}\n` +
+                `Device Source: ${dataSourceLabel}\n` +
+                `Recommended Precaution: ${recommendedAction}${locPart}\n` +
                 `Recorded at: ${timestampStr}.\n` +
                 `Automated IoT Healthcare Telemetry notice.`;
     }
 
-    // -------------------------------------------------------------
-    // 4. Gateway Dispatch Execution (Real or Simulation Fallback)
-    // -------------------------------------------------------------
     const deliveries = [];
-    const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-    const twilioToken = process.env.TWILIO_AUTH_TOKEN;
-    const twilioFrom = process.env.TWILIO_PHONE_NUMBER;
-    const fast2smsKey = process.env.FAST2SMS_API_KEY;
-    const webhookUrl = process.env.SMS_WEBHOOK_URL;
-
-    let provider = 'SIMULATED_GATEWAY';
-    let isLiveGateway = false;
-
-    if (twilioSid && twilioToken && twilioFrom) {
-      provider = 'TWILIO_REST_API';
-      isLiveGateway = true;
-    } else if (fast2smsKey) {
-      provider = 'FAST2SMS_API';
-      isLiveGateway = true;
-    } else if (webhookUrl) {
-      provider = 'CUSTOM_SMS_WEBHOOK';
-      isLiveGateway = true;
-    }
 
     for (const recipient of uniqueRecipients) {
       if (isLiveGateway && provider === 'TWILIO_REST_API') {

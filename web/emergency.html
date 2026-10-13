@@ -29,7 +29,19 @@
           <p style="font-size: 0.9rem;">Real-time dispatch status, caregiver acknowledgement &amp; audit history</p>
         </div>
 
-        <div style="display:flex; align-items:center; gap:var(--space-md); flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:var(--space-sm); flex-wrap:wrap;">
+          <!-- Call Parent / Guardian Quick Action -->
+          <button type="button" class="btn btn-secondary" id="btn-call-parent" aria-label="Call Parent or Guardian" style="border-color:rgba(0,240,255,0.4); color:var(--cyan-primary);">
+            <i data-lucide="phone" style="width:16px;height:16px;"></i>
+            <span>Call Parent / Guardian</span>
+          </button>
+
+          <!-- Emergency Call Quick Action -->
+          <button type="button" class="btn btn-secondary" id="btn-call-emergency" aria-label="Call Emergency Contact" style="border-color:rgba(239,68,68,0.4); color:#fca5a5;">
+            <i data-lucide="phone-outgoing" style="width:16px;height:16px;"></i>
+            <span>Emergency Call</span>
+          </button>
+
           <button type="button" class="btn-sos" id="btn-manual-sos" aria-label="Trigger Deliberate SOS">
             <i data-lucide="alert-octagon" style="width:20px;height:20px;"></i>
             <span>TRANSMIT MANUAL SOS</span>
@@ -133,38 +145,106 @@
         <!-- Caregiver Dispatch Network Column -->
         <div class="col-4">
           <div class="glass-panel" style="padding:var(--space-lg); display:flex; flex-direction:column; gap:var(--space-md); height:100%;">
-            <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
-              <i data-lucide="phone-call" style="width:18px;height:18px;color:#38bdf8;"></i>
-              <span>Emergency Dispatch Contacts</span>
-            </h3>
-
-            <!-- Primary Caregiver -->
-            <div class="caregiver-card primary">
-              <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span class="status-badge normal" style="font-size:0.65rem;">PRIMARY RESPONDER</span>
-                <span style="font-size:0.75rem; color:#34d399;">EMAIL NOTIFIED</span>
-              </div>
-              <div style="font-size:1.05rem; font-weight:700; color:var(--text-main);" id="primary-caregiver-name">Dr. Ramesh Sharma</div>
-              <div style="font-size:0.8rem; color:var(--text-muted);">Attending Physician</div>
-              <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--cyan-primary); margin-top:2px;">+91 98765 43210</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem; margin:0;">
+                <i data-lucide="phone-call" style="width:18px;height:18px;color:#38bdf8;"></i>
+                <span>Caregiver Contacts</span>
+              </h3>
+              <a href="settings.html" class="btn btn-secondary btn-sm" style="padding:2px 8px; font-size:0.72rem;">Configure</a>
             </div>
 
-            <!-- Secondary Contact -->
-            <div class="caregiver-card">
+            <!-- Parent / Guardian Contact Card -->
+            <div class="caregiver-card primary" style="background:rgba(6, 12, 24, 0.65); border:1px solid rgba(0, 240, 255, 0.3); padding:var(--space-md); border-radius:6px;">
               <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span class="status-badge warning" style="font-size:0.65rem;">SECONDARY CONTACT</span>
-                <span style="font-size:0.75rem; color:var(--text-subtle);">ON STANDBY</span>
+                <span class="status-badge normal" style="font-size:0.65rem;">PARENT / GUARDIAN</span>
+                <span style="font-size:0.7rem; color:#38bdf8;">NOTIFIED (YELLOW &amp; RED)</span>
               </div>
-              <div style="font-size:1.05rem; font-weight:700; color:var(--text-main);">Amit Doe</div>
-              <div style="font-size:0.8rem; color:var(--text-muted);">Son / Next of Kin</div>
-              <div style="font-family:var(--font-mono); font-size:0.85rem; color:var(--cyan-primary); margin-top:2px;">+91 91234 56789</div>
+              <div style="font-size:1.05rem; font-weight:700; color:var(--text-main); margin-top:4px;" id="parent-contact-display-name">
+                Parent / Guardian
+              </div>
+              <div style="font-size:0.8rem; color:var(--text-muted);" id="parent-contact-display-relation">
+                Primary Guardian
+              </div>
+              <div style="font-family:var(--font-mono); font-size:0.9rem; color:var(--cyan-primary); margin-top:2px;" id="parent-contact-display-phone">
+                Not Configured
+              </div>
+              <div style="margin-top:0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-card-call-parent" style="width:100%; border-color:rgba(0,240,255,0.4); color:var(--cyan-primary);">
+                  <i data-lucide="phone" style="width:14px;height:14px;"></i>
+                  <span>Call Parent / Guardian</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Emergency Contact Card -->
+            <div class="caregiver-card" style="background:rgba(239, 68, 68, 0.05); border:1px solid rgba(239, 68, 68, 0.25); padding:var(--space-md); border-radius:6px;">
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="status-badge emergency" style="font-size:0.65rem;">EMERGENCY CONTACT</span>
+                <span style="font-size:0.7rem; color:#fca5a5;">NOTIFIED (RED ZONE)</span>
+              </div>
+              <div style="font-size:1.05rem; font-weight:700; color:var(--text-main); margin-top:4px;" id="emergency-contact-display-name">
+                Emergency Contact
+              </div>
+              <div style="font-size:0.8rem; color:var(--text-muted);" id="emergency-contact-display-relation">
+                Emergency Response
+              </div>
+              <div style="font-family:var(--font-mono); font-size:0.9rem; color:#fca5a5; margin-top:2px;" id="emergency-contact-display-phone">
+                Not Configured
+              </div>
+              <div style="margin-top:0.5rem;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-card-call-emergency" style="width:100%; border-color:rgba(239,68,68,0.4); color:#fca5a5;">
+                  <i data-lucide="phone-outgoing" style="width:14px;height:14px;"></i>
+                  <span>Call Emergency</span>
+                </button>
+              </div>
             </div>
 
             <!-- Medical Disclaimer Card -->
             <div style="margin-top:auto; font-size:0.72rem; color:var(--text-subtle); border-left:2px solid var(--border-subtle); padding-left:0.5rem; line-height:1.4;">
-              <strong>NOTICE:</strong> ALPHA SQUARED prototype telemetry notifications are designed to support rapid emergency response but do not replace certified emergency triage or professional clinical diagnosis.
+              <strong>NOTICE:</strong> ALPHA SQUARED prototype telemetry notifications support rapid emergency response but do not replace certified emergency triage. Call confirmation opens your device native dialer.
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- Dispatched Notifications Audit Log Table -->
+      <section class="glass-panel" style="margin-top:var(--space-md); padding:var(--space-lg);" aria-labelledby="notif-log-heading">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); flex-wrap:wrap; gap:var(--space-sm);">
+          <div>
+            <h3 id="notif-log-heading" style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="message-square" style="width:18px;height:18px;color:#38bdf8;"></i>
+              <span>Dispatched Health Alert &amp; SMS Log</span>
+            </h3>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Real-time audit trail of Green, Yellow, and Red health alerts dispatched to contacts</p>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btn-refresh-notifs">
+            <i data-lucide="refresh-cw" style="width:14px;height:14px;"></i>
+            <span>Refresh Notifications</span>
+          </button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="table-custom" aria-label="Dispatched Notifications Table">
+            <thead>
+              <tr>
+                <th>Log ID</th>
+                <th>Zone / Status</th>
+                <th>Alert Reason</th>
+                <th>Vitals Snapshot</th>
+                <th>Recipients</th>
+                <th>Location</th>
+                <th>Mode</th>
+                <th>Timestamp</th>
+              </tr>
+            </thead>
+            <tbody id="notif-history-tbody">
+              <tr>
+                <td colspan="8" style="text-align:center; color:var(--text-subtle); padding:var(--space-lg);">
+                  No recent health notifications dispatched.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
 

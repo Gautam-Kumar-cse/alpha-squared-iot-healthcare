@@ -8,12 +8,14 @@ import { emergencyDetector } from '../services/emergency-service.js';
 import { demoSimulator, DEMO_SCENARIOS } from '../services/demo-simulator.js';
 import { getFirebaseConfig, saveCustomFirebaseConfig, DEFAULT_FIREBASE_CONFIG } from '../config/firebase-config.js';
 import { showToast } from '../components/notification-toast.js';
+import { dbService } from '../services/db-service.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   renderNavbar('settings');
   initParticleBackground('bg-canvas');
 
   loadSettings();
+  initContactValidationAndActions();
   initDemoControls();
   initSaveAction();
   initTestSmsAction();
@@ -23,37 +25,100 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+function isValidPhoneNumber(phone) {
+  if (!phone) return false;
+  const clean = phone.replace(/[\s\-\(\)\.]/g, '');
+  // Matches 7 to 15 digits, optionally prefixed by '+' (e.g., +919876543210 or 911 or 1234567)
+  return /^\+?[1-9]\d{6,14}$/.test(clean);
+}
+
+function updateValidationBadge(inputEl, badgeEl, isRequired = false) {
+  if (!inputEl || !badgeEl) return;
+  const val = inputEl.value.trim();
+  if (!val) {
+    if (isRequired) {
+      badgeEl.style.display = 'inline-block';
+      badgeEl.className = 'status-badge emergency';
+      badgeEl.textContent = 'REQUIRED';
+    } else {
+      badgeEl.style.display = 'none';
+    }
+    return;
+  }
+
+  const valid = isValidPhoneNumber(val);
+  badgeEl.style.display = 'inline-block';
+  if (valid) {
+    badgeEl.className = 'status-badge normal';
+    badgeEl.textContent = 'VALID NUMBER';
+  } else {
+    badgeEl.className = 'status-badge warning';
+    badgeEl.textContent = 'INVALID (7-15 DIGITS)';
+  }
+}
+
 function loadSettings() {
-  // Load Thresholds
+  // 1. Load Thresholds
   const th = emergencyDetector.thresholds;
-  document.getElementById('thresh-hr-low').value = th.hrLowWarning;
-  document.getElementById('thresh-hr-high').value = th.hrHighWarning;
-  document.getElementById('thresh-spo2-low').value = th.spo2LowWarning;
-  document.getElementById('thresh-temp-high').value = th.tempHighWarning;
-  document.getElementById('thresh-fall-sec').value = th.fallConfirmationSeconds;
+  if (th) {
+    const elHrLow = document.getElementById('thresh-hr-low');
+    const elHrHigh = document.getElementById('thresh-hr-high');
+    const elSpo2 = document.getElementById('thresh-spo2-low');
+    const elTemp = document.getElementById('thresh-temp-high');
+    const elFall = document.getElementById('thresh-fall-sec');
 
-  // Load Contacts
-  try {
-    const savedPatientPhone = localStorage.getItem('alphasquared_patient_phone');
-    const patientPhoneInput = document.getElementById('contact-patient-phone');
-    if (patientPhoneInput && savedPatientPhone) {
-      patientPhoneInput.value = savedPatientPhone;
-    }
+    if (elHrLow) elHrLow.value = th.hrLowWarning;
+    if (elHrHigh) elHrHigh.value = th.hrHighWarning;
+    if (elSpo2) elSpo2.value = th.spo2LowWarning;
+    if (elTemp) elTemp.value = th.tempHighWarning;
+    if (elFall) elFall.value = th.fallConfirmationSeconds;
+  }
 
-    const contacts = JSON.parse(localStorage.getItem('alphasquared_contacts') || '{}');
-    if (contacts.primary) {
-      if (contacts.primary.name) document.getElementById('contact-primary-name').value = contacts.primary.name;
-      if (contacts.primary.phone) document.getElementById('contact-primary-phone').value = contacts.primary.phone;
-      if (contacts.primary.email) document.getElementById('contact-primary-email').value = contacts.primary.email;
-    }
-    if (contacts.secondary) {
-      if (contacts.secondary.name) document.getElementById('contact-sec-name').value = contacts.secondary.name;
-      if (contacts.secondary.phone) document.getElementById('contact-sec-phone').value = contacts.secondary.phone;
-      if (contacts.secondary.email) document.getElementById('contact-sec-email').value = contacts.secondary.email;
-    }
-  } catch {}
+  // 2. Load Patient Personal Phone
+  const patientPhone = localStorage.getItem('alphasquared_patient_phone') || '';
+  const patientInput = document.getElementById('contact-patient-phone');
+  if (patientInput) {
+    patientInput.value = patientPhone;
+    updateValidationBadge(patientInput, document.getElementById('badge-patient-phone-val'), false);
+  }
 
-  // Load SMS Alert Settings
+  // 3. Load Parent / Guardian Contact
+  const parentContact = dbService.getParentGuardianContact();
+  const parentNameInput = document.getElementById('contact-parent-name');
+  const parentPhoneInput = document.getElementById('contact-parent-phone');
+  const parentRelationInput = document.getElementById('contact-parent-relation');
+
+  if (parentContact) {
+    if (parentNameInput && parentContact.name) parentNameInput.value = parentContact.name;
+    if (parentPhoneInput && parentContact.phone) parentPhoneInput.value = parentContact.phone;
+    if (parentRelationInput && parentContact.relation) parentRelationInput.value = parentContact.relation;
+  }
+  if (parentPhoneInput) {
+    updateValidationBadge(parentPhoneInput, document.getElementById('badge-parent-phone-val'), false);
+  }
+
+  // 4. Load Emergency Contact
+  const emgContact = dbService.getEmergencyContact();
+  const emgNameInput = document.getElementById('contact-emergency-name');
+  const emgPhoneInput = document.getElementById('contact-emergency-phone');
+  const emgRelationInput = document.getElementById('contact-emergency-relation');
+
+  if (emgContact) {
+    if (emgNameInput && emgContact.name) emgNameInput.value = emgContact.name;
+    if (emgPhoneInput && emgContact.phone) emgPhoneInput.value = emgContact.phone;
+    if (emgRelationInput && emgContact.relation) emgRelationInput.value = emgContact.relation;
+  }
+  if (emgPhoneInput) {
+    updateValidationBadge(emgPhoneInput, document.getElementById('badge-emergency-phone-val'), false);
+  }
+
+  // 5. Load Privacy & Location Consent Preferences
+  const locToggle = document.getElementById('toggle-location-consent');
+  const maskToggle = document.getElementById('toggle-phone-masking');
+  if (locToggle) locToggle.checked = dbService.getLocationSharingConsent('PATIENT-001');
+  if (maskToggle) maskToggle.checked = dbService.getPhoneMaskingSetting();
+
+  // 6. Load SMS Alert Settings
   const yellowToggle = document.getElementById('toggle-sms-yellow');
   const redToggle = document.getElementById('toggle-sms-red');
   const smsProviderSelect = document.getElementById('cfg-sms-provider');
@@ -72,17 +137,17 @@ function loadSettings() {
     smsSenderInput.value = localStorage.getItem('alphasquared_sms_sender');
   }
 
-  // Load Firebase Config
+  // 7. Load Firebase Config
   const fb = getFirebaseConfig();
   if (fb.databaseURL) document.getElementById('cfg-fb-dburl').value = fb.databaseURL;
   if (fb.apiKey && !fb.apiKey.includes('DEMO_KEY')) document.getElementById('cfg-fb-apikey').value = fb.apiKey;
   if (fb.projectId) document.getElementById('cfg-fb-projid').value = fb.projectId;
 
-  // Check Demo status
+  // 8. Check Demo status
   const demoToggle = document.getElementById('toggle-demo-mode');
-  demoToggle.checked = demoSimulator.isDemoActive();
+  if (demoToggle) demoToggle.checked = demoSimulator.isDemoActive();
 
-  // Load Hardware Device Settings
+  // 9. Load Hardware Device Settings
   const hwDeviceId = localStorage.getItem('alphasquared_hw_device_id') || 'ESP32-ALPHA-01';
   const hwModel = localStorage.getItem('alphasquared_hw_device_model') || 'CUSTOM_REST_OR_ESP32';
   const hwApiUrl = localStorage.getItem('alphasquared_hw_api_url') || '';
@@ -96,10 +161,75 @@ function loadSettings() {
   if (apiUrlInput) apiUrlInput.value = hwApiUrl;
 }
 
+function initContactValidationAndActions() {
+  const patientInput = document.getElementById('contact-patient-phone');
+  const parentPhoneInput = document.getElementById('contact-parent-phone');
+  const emgPhoneInput = document.getElementById('contact-emergency-phone');
+
+  const badgePatient = document.getElementById('badge-patient-phone-val');
+  const badgeParent = document.getElementById('badge-parent-phone-val');
+  const badgeEmg = document.getElementById('badge-emergency-phone-val');
+
+  if (patientInput) {
+    patientInput.addEventListener('input', () => updateValidationBadge(patientInput, badgePatient, false));
+  }
+  if (parentPhoneInput) {
+    parentPhoneInput.addEventListener('input', () => updateValidationBadge(parentPhoneInput, badgeParent, false));
+  }
+  if (emgPhoneInput) {
+    emgPhoneInput.addEventListener('input', () => updateValidationBadge(emgPhoneInput, badgeEmg, false));
+  }
+
+  // Clear Patient Phone
+  const btnClearPatient = document.getElementById('btn-clear-patient-phone');
+  if (btnClearPatient) {
+    btnClearPatient.addEventListener('click', () => {
+      if (patientInput) {
+        patientInput.value = '';
+        updateValidationBadge(patientInput, badgePatient, false);
+      }
+      localStorage.removeItem('alphasquared_patient_phone');
+      showToast('Patient phone number cleared.', 'info');
+    });
+  }
+
+  // Remove Parent / Guardian Contact
+  const btnRemoveParent = document.getElementById('btn-remove-parent-contact');
+  if (btnRemoveParent) {
+    btnRemoveParent.addEventListener('click', () => {
+      document.getElementById('contact-parent-name').value = '';
+      if (parentPhoneInput) {
+        parentPhoneInput.value = '';
+        updateValidationBadge(parentPhoneInput, badgeParent, false);
+      }
+      document.getElementById('contact-parent-relation').value = 'Parent / Guardian';
+      dbService.removeParentGuardianContact();
+      showToast('Parent / Guardian contact removed.', 'info');
+    });
+  }
+
+  // Remove Emergency Contact
+  const btnRemoveEmg = document.getElementById('btn-remove-emergency-contact');
+  if (btnRemoveEmg) {
+    btnRemoveEmg.addEventListener('click', () => {
+      document.getElementById('contact-emergency-name').value = '';
+      if (emgPhoneInput) {
+        emgPhoneInput.value = '';
+        updateValidationBadge(emgPhoneInput, badgeEmg, false);
+      }
+      document.getElementById('contact-emergency-relation').value = 'Emergency Contact';
+      dbService.removeEmergencyContact();
+      showToast('Emergency contact removed.', 'info');
+    });
+  }
+}
+
 function initDemoControls() {
   const toggle = document.getElementById('toggle-demo-mode');
   const scenarioSelect = document.getElementById('select-demo-scenario');
   const injectBtn = document.getElementById('btn-inject-scenario');
+
+  if (!toggle || !scenarioSelect || !injectBtn) return;
 
   toggle.addEventListener('change', () => {
     const isActive = toggle.checked;
@@ -132,46 +262,69 @@ function initSaveAction() {
   const saveBtn = document.getElementById('btn-save-all-settings');
   const resetFbBtn = document.getElementById('btn-reset-firebase');
 
+  if (!saveBtn) return;
+
   saveBtn.addEventListener('click', () => {
     // 1. Save Thresholds
     const newTh = {
-      hrLowWarning: parseInt(document.getElementById('thresh-hr-low').value, 10),
-      hrHighWarning: parseInt(document.getElementById('thresh-hr-high').value, 10),
-      spo2LowWarning: parseInt(document.getElementById('thresh-spo2-low').value, 10),
-      tempHighWarning: parseFloat(document.getElementById('thresh-temp-high').value),
-      fallConfirmationSeconds: parseInt(document.getElementById('thresh-fall-sec').value, 10)
+      hrLowWarning: parseInt(document.getElementById('thresh-hr-low')?.value || '55', 10),
+      hrHighWarning: parseInt(document.getElementById('thresh-hr-high')?.value || '105', 10),
+      spo2LowWarning: parseInt(document.getElementById('thresh-spo2-low')?.value || '94', 10),
+      tempHighWarning: parseFloat(document.getElementById('thresh-temp-high')?.value || '37.5'),
+      fallConfirmationSeconds: parseInt(document.getElementById('thresh-fall-sec')?.value || '30', 10)
     };
     emergencyDetector.saveThresholds(newTh);
 
-    // 2. Save Contacts & Patient Phone
+    // 2. Save Patient Phone
     const patientPhone = document.getElementById('contact-patient-phone')?.value.trim() || '';
     if (patientPhone) {
-      localStorage.setItem('alphasquared_patient_phone', patientPhone);
-    }
-
-    const contacts = {
-      primary: {
-        name: document.getElementById('contact-primary-name').value.trim(),
-        phone: document.getElementById('contact-primary-phone').value.trim(),
-        email: document.getElementById('contact-primary-email').value.trim()
-      },
-      secondary: {
-        name: document.getElementById('contact-sec-name').value.trim(),
-        phone: document.getElementById('contact-sec-phone').value.trim(),
-        email: document.getElementById('contact-sec-email').value.trim()
+      if (!isValidPhoneNumber(patientPhone)) {
+        showToast('Notice: Patient phone number does not conform to standard 7-15 digit format.', 'warning');
       }
-    };
-    localStorage.setItem('alphasquared_contacts', JSON.stringify(contacts));
-    if (contacts.primary.phone) {
-      localStorage.setItem('alphasquared_primary_caregiver_phone', contacts.primary.phone);
-      localStorage.setItem('alphasquared_primary_caregiver_name', contacts.primary.name);
-    }
-    if (contacts.secondary.phone) {
-      localStorage.setItem('alphasquared_sec_contact_phone', contacts.secondary.phone);
-      localStorage.setItem('alphasquared_sec_contact_name', contacts.secondary.name);
+      localStorage.setItem('alphasquared_patient_phone', patientPhone);
+    } else {
+      localStorage.removeItem('alphasquared_patient_phone');
     }
 
-    // 3. Save SMS Alert Policies & Gateway Settings
+    // 3. Save Parent / Guardian Contact
+    const parentName = document.getElementById('contact-parent-name')?.value.trim() || '';
+    const parentPhone = document.getElementById('contact-parent-phone')?.value.trim() || '';
+    const parentRelation = document.getElementById('contact-parent-relation')?.value.trim() || 'Parent / Guardian';
+
+    if (parentName || parentPhone) {
+      if (parentPhone && !isValidPhoneNumber(parentPhone)) {
+        showToast('Notice: Parent / Guardian phone format is invalid. Please verify 7-15 digits.', 'warning');
+      }
+      dbService.saveParentGuardianContact({
+        name: parentName,
+        phone: parentPhone,
+        relation: parentRelation
+      });
+    }
+
+    // 4. Save Emergency Contact
+    const emgName = document.getElementById('contact-emergency-name')?.value.trim() || '';
+    const emgPhone = document.getElementById('contact-emergency-phone')?.value.trim() || '';
+    const emgRelation = document.getElementById('contact-emergency-relation')?.value.trim() || 'Emergency Contact';
+
+    if (emgName || emgPhone) {
+      if (emgPhone && !isValidPhoneNumber(emgPhone)) {
+        showToast('Notice: Emergency contact phone format is invalid. Please verify 7-15 digits.', 'warning');
+      }
+      dbService.saveEmergencyContact({
+        name: emgName,
+        phone: emgPhone,
+        relation: emgRelation
+      });
+    }
+
+    // 5. Save Privacy & Location Consent Preferences
+    const locToggle = document.getElementById('toggle-location-consent');
+    const maskToggle = document.getElementById('toggle-phone-masking');
+    if (locToggle) dbService.setLocationSharingConsent('PATIENT-001', locToggle.checked);
+    if (maskToggle) dbService.setPhoneMaskingSetting(maskToggle.checked);
+
+    // 6. Save SMS Alert Policies & Gateway Settings
     const yellowToggle = document.getElementById('toggle-sms-yellow');
     const redToggle = document.getElementById('toggle-sms-red');
     const smsProvider = document.getElementById('cfg-sms-provider')?.value;
@@ -184,10 +337,10 @@ function initSaveAction() {
     if (smsCooldown) localStorage.setItem('alphasquared_sms_cooldown', smsCooldown);
     if (smsSender) localStorage.setItem('alphasquared_sms_sender', smsSender);
 
-    // 4. Save Firebase if filled
-    const dbUrl = document.getElementById('cfg-fb-dburl').value.trim();
-    const apiKey = document.getElementById('cfg-fb-apikey').value.trim();
-    const projId = document.getElementById('cfg-fb-projid').value.trim();
+    // 7. Save Firebase if filled
+    const dbUrl = document.getElementById('cfg-fb-dburl')?.value.trim();
+    const apiKey = document.getElementById('cfg-fb-apikey')?.value.trim();
+    const projId = document.getElementById('cfg-fb-projid')?.value.trim();
 
     if (dbUrl || apiKey || projId) {
       const customFb = {
@@ -199,7 +352,7 @@ function initSaveAction() {
       saveCustomFirebaseConfig(customFb);
     }
 
-    // 5. Save Hardware Device Settings
+    // 8. Save Hardware Device Settings
     const hwDevId = document.getElementById('cfg-hw-device-id')?.value.trim();
     const hwProv = document.getElementById('cfg-hw-provider')?.value;
     const hwUrl = document.getElementById('cfg-hw-api-url')?.value.trim();
@@ -210,16 +363,18 @@ function initSaveAction() {
       localStorage.setItem('alphasquared_hw_is_connected', 'true');
     }
 
-    showToast('All settings, SMS policies, and clinical thresholds saved successfully!', 'success');
+    showToast('All contacts, privacy preferences, and clinical thresholds saved successfully!', 'success');
   });
 
-  resetFbBtn.addEventListener('click', () => {
-    localStorage.removeItem('alphasquared_firebase_custom_config');
-    document.getElementById('cfg-fb-dburl').value = DEFAULT_FIREBASE_CONFIG.databaseURL;
-    document.getElementById('cfg-fb-apikey').value = '';
-    document.getElementById('cfg-fb-projid').value = DEFAULT_FIREBASE_CONFIG.projectId;
-    showToast('Firebase settings restored to default prototype template.', 'info');
-  });
+  if (resetFbBtn) {
+    resetFbBtn.addEventListener('click', () => {
+      localStorage.removeItem('alphasquared_firebase_custom_config');
+      document.getElementById('cfg-fb-dburl').value = DEFAULT_FIREBASE_CONFIG.databaseURL;
+      document.getElementById('cfg-fb-apikey').value = '';
+      document.getElementById('cfg-fb-projid').value = DEFAULT_FIREBASE_CONFIG.projectId;
+      showToast('Firebase settings restored to default prototype template.', 'info');
+    });
+  }
 }
 
 function initTestSmsAction() {
@@ -228,10 +383,16 @@ function initTestSmsAction() {
   if (!testBtn) return;
 
   testBtn.addEventListener('click', async () => {
-    const patientPhone = document.getElementById('contact-patient-phone')?.value.trim() || '+91 99887 76655';
-    const caregiverPhone = document.getElementById('contact-primary-phone')?.value.trim() || '+91 98765 43210';
-    const caregiverName = document.getElementById('contact-primary-name')?.value.trim() || 'Dr. Ramesh Sharma';
-    const provider = document.getElementById('cfg-sms-provider')?.value || 'SIMULATED';
+    const parentContact = dbService.getParentGuardianContact();
+    const caregiverPhone = parentContact?.phone || document.getElementById('contact-parent-phone')?.value.trim();
+    const caregiverName = parentContact?.name || document.getElementById('contact-parent-name')?.value.trim() || 'Parent / Guardian';
+    const patientPhone = localStorage.getItem('alphasquared_patient_phone') || document.getElementById('contact-patient-phone')?.value.trim() || null;
+    const locationSharingConsent = dbService.getLocationSharingConsent('PATIENT-001');
+
+    if (!caregiverPhone && !patientPhone) {
+      showToast('Please configure a Parent/Guardian or Patient phone number first to test SMS.', 'warning');
+      return;
+    }
 
     try {
       testBtn.disabled = true;
@@ -253,9 +414,11 @@ function initTestSmsAction() {
           patientName: 'Jane Doe',
           zone: 'YELLOW',
           patientPhone,
-          contacts: [
-            { name: caregiverName, phone: caregiverPhone, role: 'PRIMARY_CAREGIVER' }
-          ]
+          locationSharingConsent,
+          vitals: { heartRate: 78, temperature: 36.8 },
+          contacts: caregiverPhone ? [
+            { name: caregiverName, phone: caregiverPhone, role: 'PARENT_GUARDIAN' }
+          ] : []
         })
       });
 
@@ -270,7 +433,7 @@ function initTestSmsAction() {
           feedbackBox.innerHTML = `
             <strong>✅ Test SMS Dispatched Successfully!</strong><br>
             <strong>Provider:</strong> ${result.provider} (${result.isLiveGateway ? 'Live Gateway Active' : 'Simulation Audit Mode'})<br>
-            <strong>Recipient:</strong> ${caregiverName} (${caregiverPhone})<br>
+            <strong>Recipient:</strong> ${caregiverName} (${caregiverPhone || patientPhone})<br>
             <strong>Status Notice:</strong> ${result.notice}<br>
             <div style="margin-top:4px; font-size:0.75rem; color:#cbd5e1; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;">
               ${result.smsBody}

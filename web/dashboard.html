@@ -42,12 +42,24 @@
           </div>
         </div>
 
-        <div style="display:flex; align-items:center; gap:var(--space-md); flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:var(--space-sm); flex-wrap:wrap;">
           <!-- Telemetry Sync Timestamp -->
-          <div style="text-align:right; font-size:0.8rem; color:var(--text-muted);">
+          <div style="text-align:right; font-size:0.8rem; color:var(--text-muted); margin-right:var(--space-xs);">
             <div>LAST SYNCHRONIZATION</div>
             <div id="last-update-time" style="font-family:var(--font-mono); color:var(--text-main); font-weight:600;">Not Connected</div>
           </div>
+
+          <!-- Quick Call Parent Action -->
+          <button type="button" class="btn btn-secondary btn-sm" id="dash-btn-call-parent" aria-label="Call Parent or Guardian" style="border-color:rgba(0,240,255,0.35); color:var(--cyan-primary);">
+            <i data-lucide="phone" style="width:14px;height:14px;"></i>
+            <span>Call Parent</span>
+          </button>
+
+          <!-- Quick Emergency Call Action -->
+          <button type="button" class="btn btn-secondary btn-sm" id="dash-btn-call-emergency" aria-label="Call Emergency Contact" style="border-color:rgba(239,68,68,0.35); color:#fca5a5;">
+            <i data-lucide="phone-outgoing" style="width:14px;height:14px;"></i>
+            <span>Emergency Call</span>
+          </button>
 
           <!-- Big Deliberate Manual SOS Trigger Button -->
           <button type="button" class="btn-sos" id="trigger-sos-btn" aria-label="Trigger Emergency SOS Alert">

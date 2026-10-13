@@ -884,6 +884,227 @@ await runAsyncTest('Dashboard Controller: renderTelemetryData updates HR and Tem
 });
 
 // ---------------------------------------------------------
+// 16. Health Notification & Parent/Emergency Calling System Tests
+// ---------------------------------------------------------
+runTest('Settings HTML: Eliminates hardcoded personal phone numbers and provides validated contact managers & privacy toggles', () => {
+  const settingsHtml = fs.readFileSync(path.resolve(process.cwd(), 'web/settings.html'), 'utf-8');
+
+  // Hardcoded personal phone numbers must NOT exist in value attributes
+  assert.ok(!settingsHtml.includes('value="+91 99887 76655"'), 'Patient personal phone must not be hardcoded in value attribute');
+  assert.ok(!settingsHtml.includes('value="+91 98765 43210"'), 'Caregiver phone must not be hardcoded in value attribute');
+  assert.ok(!settingsHtml.includes('value="+91 91234 56789"'), 'Secondary phone must not be hardcoded in value attribute');
+
+  // Parent / Guardian & Emergency contact fields and remove buttons must exist
+  assert.ok(settingsHtml.includes('id="contact-parent-name"'), 'Must have contact-parent-name input');
+  assert.ok(settingsHtml.includes('id="contact-parent-phone"'), 'Must have contact-parent-phone input');
+  assert.ok(settingsHtml.includes('id="btn-remove-parent-contact"'), 'Must have btn-remove-parent-contact button');
+
+  assert.ok(settingsHtml.includes('id="contact-emergency-name"'), 'Must have contact-emergency-name input');
+  assert.ok(settingsHtml.includes('id="contact-emergency-phone"'), 'Must have contact-emergency-phone input');
+  assert.ok(settingsHtml.includes('id="btn-remove-emergency-contact"'), 'Must have btn-remove-emergency-contact button');
+
+  assert.ok(settingsHtml.includes('id="btn-clear-patient-phone"'), 'Must have btn-clear-patient-phone button');
+
+  // Privacy and location consent toggles
+  assert.ok(settingsHtml.includes('id="toggle-location-consent"'), 'Must have toggle-location-consent checkbox');
+  assert.ok(settingsHtml.includes('id="toggle-phone-masking"'), 'Must have toggle-phone-masking checkbox');
+});
+
+runTest('Phone Number Validation: Correctly validates standard 7-15 digit formats and rejects invalid numbers', () => {
+  const isValidPhone = (phone) => {
+    if (!phone) return false;
+    const clean = phone.replace(/[\s\-\(\)\.]/g, '');
+    return /^\+?[1-9]\d{6,14}$/.test(clean);
+  };
+
+  assert.strictEqual(isValidPhone('+919876543210'), true);
+  assert.strictEqual(isValidPhone('+1 415 555 2671'), true);
+  assert.strictEqual(isValidPhone('9876543210'), true);
+  assert.strictEqual(isValidPhone('+44 20 7946 0991'), true);
+
+  // Invalid numbers
+  assert.strictEqual(isValidPhone(''), false);
+  assert.strictEqual(isValidPhone('12345'), false); // less than 7 digits
+  assert.strictEqual(isValidPhone('abcdefgh'), false);
+  assert.strictEqual(isValidPhone('+0123456789'), false); // starts with 0 after +
+});
+
+await runAsyncTest('Database Service: Manages contacts, location consent, masking, and logs audit entries', async () => {
+  // In-memory mock storage
+  const mockStorage = new Map();
+  globalThis.localStorage = {
+    getItem: (k) => mockStorage.get(k) || null,
+    setItem: (k, v) => mockStorage.set(k, String(v)),
+    removeItem: (k) => mockStorage.delete(k)
+  };
+
+  const { dbService } = await import('../web/js/services/db-service.js');
+
+  // 1. Parent Guardian contact
+  dbService.saveParentGuardianContact({
+    name: 'Martha Wayne',
+    phone: '+1 555 019 4432',
+    relation: 'Mother'
+  });
+  const savedParent = dbService.getParentGuardianContact();
+  assert.strictEqual(savedParent.name, 'Martha Wayne');
+  assert.strictEqual(savedParent.phone, '+1 555 019 4432');
+
+  // 2. Emergency contact
+  dbService.saveEmergencyContact({
+    name: 'Alfred Pennyworth',
+    phone: '+1 555 019 8899',
+    relation: 'Emergency Guardian'
+  });
+  const savedEmg = dbService.getEmergencyContact();
+  assert.strictEqual(savedEmg.name, 'Alfred Pennyworth');
+  assert.strictEqual(savedEmg.phone, '+1 555 019 8899');
+
+  // 3. Phone masking
+  assert.strictEqual(dbService.maskPhoneNumber('+1 555 019 4432'), '+1 5 •••••••• 432');
+  assert.strictEqual(dbService.maskPhoneNumber('+91 98765 43210'), '+91  •••••••• 210');
+
+  // 4. Location sharing consent
+  assert.strictEqual(dbService.getLocationSharingConsent('PATIENT-001'), true);
+  dbService.setLocationSharingConsent('PATIENT-001', false);
+  assert.strictEqual(dbService.getLocationSharingConsent('PATIENT-001'), false);
+
+  // 5. Notification logging
+  const notif = await dbService.recordNotificationLog('PATIENT-001', {
+    zone: 'YELLOW',
+    reason: 'Mild Tachycardia',
+    vitals: { heartRate: 112, temperature: 37.1 },
+    status: 'DELIVERED',
+    dataSource: 'REAL',
+    locationIncluded: false
+  });
+  assert.ok(notif.id.startsWith('NOTIF-'));
+  const logs = dbService.getNotificationLogs('PATIENT-001');
+  assert.strictEqual(logs.length, 1);
+  assert.strictEqual(logs[0].reason, 'Mild Tachycardia');
+
+  // 6. Call action audit
+  const callAction = await dbService.recordCallAction('PATIENT-001', {
+    target: 'PARENT_GUARDIAN',
+    name: 'Martha Wayne',
+    phone: '+1 555 019 4432',
+    relation: 'Mother',
+    confirmed: true,
+    status: 'DIALER_LAUNCHED'
+  });
+  assert.ok(callAction.id.startsWith('CALL-'));
+  const callLogs = dbService.getCallActions('PATIENT-001');
+  assert.strictEqual(callLogs.length, 1);
+  assert.strictEqual(callLogs[0].status, 'DIALER_LAUNCHED');
+
+  // 7. Remove contacts
+  dbService.removeParentGuardianContact();
+  assert.strictEqual(dbService.getParentGuardianContact(), null);
+  dbService.removeEmergencyContact();
+  assert.strictEqual(dbService.getEmergencyContact(), null);
+});
+
+await runAsyncTest('SMS Dispatcher API: Formats Yellow and Red notifications with HR, Temp, Source, and Location privacy', async () => {
+  // Test Yellow Zone
+  const reqYellow = {
+    method: 'POST',
+    body: {
+      patientId: 'PATIENT-FORMAT-01',
+      patientName: 'John Doe',
+      zone: 'YELLOW',
+      triggers: [{ parameter: 'heartRate', zone: 'YELLOW', label: 'Tachycardia', value: '110 BPM' }],
+      vitals: { heartRate: 110, temperature: 37.4 },
+      contacts: [{ name: 'Sarah Doe', phone: '+15551234567', role: 'PARENT_GUARDIAN' }],
+      dataSource: 'REAL',
+      location: { latitude: 24.7955, longitude: 84.9995 },
+      locationSharingConsent: true,
+      bypassCooldown: true
+    }
+  };
+  const resYellow = createMockRes();
+  await sendSmsHandler(reqYellow, resYellow);
+  assert.strictEqual(resYellow.statusCode, 200);
+  assert.strictEqual(resYellow.body.zone, 'YELLOW');
+  assert.ok(resYellow.body.smsBody.includes('Heart Rate: 110 BPM'));
+  assert.ok(resYellow.body.smsBody.includes('Body Temp: 37.4°C'));
+  assert.ok(resYellow.body.smsBody.includes('Device Source: REAL'));
+  assert.ok(resYellow.body.smsBody.includes('maps.google.com/?q=24.7955,84.9995'));
+
+  // Test Yellow Zone with Location Privacy Consent Disabled
+  const reqYellowPrivate = {
+    method: 'POST',
+    body: {
+      ...reqYellow.body,
+      locationSharingConsent: false,
+      bypassCooldown: true
+    }
+  };
+  const resYellowPrivate = createMockRes();
+  await sendSmsHandler(reqYellowPrivate, resYellowPrivate);
+  assert.strictEqual(resYellowPrivate.statusCode, 200);
+  assert.ok(resYellowPrivate.body.smsBody.includes('Location: Disabled by user privacy consent'));
+  assert.ok(!resYellowPrivate.body.smsBody.includes('maps.google.com'));
+
+  // Test Red Zone
+  const reqRed = {
+    method: 'POST',
+    body: {
+      patientId: 'PATIENT-FORMAT-02',
+      patientName: 'Jane Smith',
+      zone: 'RED',
+      triggers: [{ parameter: 'heartRate', zone: 'RED', label: 'Extreme Tachycardia', value: '135 BPM' }],
+      vitals: { heartRate: 135, temperature: 38.6 },
+      contacts: [{ name: 'Emergency Doc', phone: '+15559876543', role: 'EMERGENCY_CONTACT' }],
+      dataSource: 'DEMO',
+      location: { latitude: 24.7955, longitude: 84.9995 },
+      locationSharingConsent: true,
+      bypassCooldown: true
+    }
+  };
+  const resRed = createMockRes();
+  await sendSmsHandler(reqRed, resRed);
+  assert.strictEqual(resRed.statusCode, 200);
+  assert.strictEqual(resRed.body.zone, 'RED');
+  assert.ok(resRed.body.smsBody.includes('[SIMULATED DEMO NOTIFICATION]'));
+  assert.ok(resRed.body.smsBody.includes('HR: 135 BPM'));
+  assert.ok(resRed.body.smsBody.includes('Temp: 38.6°C'));
+  assert.ok(resRed.body.smsBody.includes('Device Source: DEMO'));
+  assert.ok(resRed.body.smsBody.includes('maps.google.com/?q=24.7955,84.9995'));
+
+  // Test Green Zone (Normal Status - Suppressed)
+  const reqGreen = {
+    method: 'POST',
+    body: {
+      patientId: 'PATIENT-FORMAT-03',
+      zone: 'GREEN',
+      vitals: { heartRate: 72, temperature: 36.8 }
+    }
+  };
+  const resGreen = createMockRes();
+  await sendSmsHandler(reqGreen, resGreen);
+  assert.strictEqual(resGreen.statusCode, 200);
+  assert.strictEqual(resGreen.body.status, 'NORMAL_STATUS');
+  assert.ok(resGreen.body.message.includes('Green Zone (Normal)'));
+});
+
+runTest('Emergency & Dashboard Pages: Call buttons and Notification log tables integrated cleanly', () => {
+  const emgHtml = fs.readFileSync(path.resolve(process.cwd(), 'web/emergency.html'), 'utf-8');
+  assert.ok(emgHtml.includes('id="btn-call-parent"'), 'emergency.html must have btn-call-parent');
+  assert.ok(emgHtml.includes('id="btn-call-emergency"'), 'emergency.html must have btn-call-emergency');
+  assert.ok(emgHtml.includes('id="notif-history-tbody"'), 'emergency.html must have notif-history-tbody');
+
+  const dashHtml = fs.readFileSync(path.resolve(process.cwd(), 'web/dashboard.html'), 'utf-8');
+  assert.ok(dashHtml.includes('id="dash-btn-call-parent"'), 'dashboard.html must have dash-btn-call-parent');
+  assert.ok(dashHtml.includes('id="dash-btn-call-emergency"'), 'dashboard.html must have dash-btn-call-emergency');
+
+  // Verify dashboard preserves dual-card layout (only HR and Temp)
+  assert.ok(dashHtml.includes('id="card-heart-rate"'));
+  assert.ok(dashHtml.includes('id="card-temp"'));
+  assert.ok(!dashHtml.includes('id="card-spo2"'));
+  assert.ok(!dashHtml.includes('id="card-bp"'));
+});
+
+// ---------------------------------------------------------
 // Final Summary
 // ---------------------------------------------------------
 console.log('\n====================================================');
@@ -893,4 +1114,5 @@ console.log('====================================================\n');
 if (failCount > 0) {
   process.exit(1);
 }
+
 
