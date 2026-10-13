@@ -124,6 +124,18 @@
               <span>Caregiver Dispatch Network</span>
             </h3>
 
+            <!-- Patient Personal Phone -->
+            <div style="border-bottom:1px solid var(--border-subtle); padding-bottom:var(--space-md); margin-bottom:var(--space-md);">
+              <div style="font-size:0.75rem; text-transform:uppercase; color:#fbbf24; font-weight:700; margin-bottom:0.5rem;">
+                Patient Personal Device (Direct Caution Alerts)
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="contact-patient-phone">Patient Personal Phone Number</label>
+                <input type="tel" id="contact-patient-phone" class="form-input" value="+91 99887 76655">
+                <span style="font-size:0.75rem; color:var(--text-subtle);">Direct SMS advice is delivered here during Yellow Zone caution events.</span>
+              </div>
+            </div>
+
             <!-- Primary Caregiver -->
             <div style="border-bottom:1px solid var(--border-subtle); padding-bottom:var(--space-md); margin-bottom:var(--space-md);">
               <div style="font-size:0.75rem; text-transform:uppercase; color:var(--cyan-primary); font-weight:700; margin-bottom:0.5rem;">
@@ -164,6 +176,79 @@
                   <input type="email" id="contact-sec-email" class="form-input" value="family@alphasquared.org">
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- Automatic Clinical Zone SMS Alert Gateway Configuration -->
+          <div class="glass-panel" style="padding:var(--space-lg); margin-bottom:var(--space-md); border-color:rgba(0, 240, 255, 0.3);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); flex-wrap:wrap; gap:0.5rem;">
+              <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem; margin:0;">
+                <i data-lucide="message-square" style="width:18px;height:18px;color:var(--cyan-primary);"></i>
+                <span>Automatic Clinical Zone SMS Alert Gateway</span>
+              </h3>
+              <span id="sms-gateway-status-badge" class="status-badge normal">READY (HYBRID SIM/LIVE)</span>
+            </div>
+
+            <p style="font-size:0.85rem; margin-bottom:var(--space-md);">
+              Automatically dispatches SMS notifications to the patient and registered caregiver contacts upon Yellow (Caution) or Red (Emergency) zone activation.
+            </p>
+
+            <!-- Alert Policy Toggles -->
+            <div style="background:rgba(6,10,18,0.6); padding:0.85rem; border-radius:6px; border:1px solid var(--border-subtle); margin-bottom:var(--space-md); display:flex; flex-direction:column; gap:0.6rem;">
+              <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer;">
+                <input type="checkbox" id="toggle-sms-yellow" checked style="width:16px;height:16px;accent-color:#f59e0b;">
+                <span style="font-size:0.85rem; font-weight:600; color:#fbbf24;">Enable Yellow Zone Caution Alerts (Patient &amp; Primary Caregiver SMS)</span>
+              </label>
+              <label style="display:flex; align-items:center; gap:0.6rem; cursor:pointer;">
+                <input type="checkbox" id="toggle-sms-red" checked style="width:16px;height:16px;accent-color:#ef4444;">
+                <span style="font-size:0.85rem; font-weight:600; color:#fca5a5;">Enable Red Zone Critical Alerts (Immediate SMS + Live GPS to All Contacts)</span>
+              </label>
+            </div>
+
+            <!-- SMS Gateway Selection & Cooldown -->
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:var(--space-md);">
+              <div class="form-group">
+                <label class="form-label" for="cfg-sms-provider">SMS Gateway Provider</label>
+                <select id="cfg-sms-provider" class="form-select">
+                  <option value="SIMULATED" selected>Simulated Gateway (Local Hackathon Demo / Audit Mode)</option>
+                  <option value="TWILIO">Twilio Cloud REST SMS Gateway</option>
+                  <option value="FAST2SMS">Fast2SMS (India Telecom Gateway)</option>
+                  <option value="WEBHOOK">Custom REST SMS Webhook</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="cfg-sms-cooldown">Anti-Spam Cooldown Window</label>
+                <select id="cfg-sms-cooldown" class="form-select">
+                  <option value="60">1 Minute (Rapid Testing)</option>
+                  <option value="300" selected>5 Minutes (Recommended Baseline)</option>
+                  <option value="600">10 Minutes</option>
+                </select>
+              </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:var(--space-md); margin-top:var(--space-xs);">
+              <div class="form-group">
+                <label class="form-label" for="cfg-sms-sender">Sender Phone / Sender ID / Twilio From Number</label>
+                <input type="text" id="cfg-sms-sender" class="form-input" placeholder="+1234567890 or ALPHASQ" value="+15550198332">
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="cfg-sms-key">SMS API Key / Twilio Auth Token (Protected)</label>
+                <input type="password" id="cfg-sms-key" class="form-input" placeholder="••••••••••••••••••••••••">
+              </div>
+            </div>
+
+            <!-- Test SMS Trigger Button & Live Feedback Box -->
+            <div style="margin-top:var(--space-md); border-top:1px solid var(--border-subtle); padding-top:var(--space-md); display:flex; flex-direction:column; gap:0.5rem;">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:0.5rem;">
+                <span style="font-size:0.8rem; color:var(--text-subtle);">Verify SMS gateway integration without triggering an actual emergency:</span>
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-send-test-sms">
+                  <i data-lucide="send" style="width:14px;height:14px;"></i>
+                  <span>Send Test SMS Now</span>
+                </button>
+              </div>
+              <div id="test-sms-feedback" style="display:none; padding:0.65rem 0.85rem; border-radius:6px; font-size:0.8rem; font-family:var(--font-mono);"></div>
             </div>
           </div>
 

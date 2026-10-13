@@ -30,9 +30,10 @@
         <div class="patient-badge">
           <div class="patient-avatar" id="patient-avatar">JD</div>
           <div>
-            <div style="display:flex; align-items:center; gap:0.5rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem; flex-wrap:wrap;">
               <h2 style="font-size:1.4rem; font-weight:800;" id="patient-name">Jane Doe</h2>
               <span class="status-badge normal" id="patient-badge-state">MONITORED</span>
+              <span class="source-badge real" id="patient-data-source-badge" style="display:none;">REAL DEVICE</span>
             </div>
             <div style="font-size:0.8rem; color:var(--text-muted); font-family:var(--font-mono); margin-top:2px;">
               PATIENT ID: <span id="patient-id" style="color:var(--cyan-primary);">PATIENT-001</span> &bull; 
@@ -210,35 +211,88 @@
         </div>
       </section>
 
-      <!-- Overall System Health & Status Banner -->
+      <!-- Overall Clinical Zone & Telemetry Status Banner -->
       <section class="glass-panel telemetry-hero normal" id="telemetry-hero-card">
-        <div class="telemetry-info">
-          <div>
-            <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); font-weight:700;">Overall Telemetry Status</div>
-            <div class="telemetry-status-big" id="overall-status-text" style="color:var(--status-normal);">STANDBY</div>
+        <div style="width:100%; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:var(--space-md);">
+          <div class="telemetry-info">
+            <div>
+              <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.25rem;">
+                <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); font-weight:700;">Clinical Health Zone</div>
+                <span class="status-badge zone-green" id="zone-badge-indicator">GREEN ZONE</span>
+              </div>
+              <div class="telemetry-status-big" id="overall-status-text" style="color:var(--status-normal);">GREEN ZONE — STABLE</div>
+            </div>
+          </div>
+
+          <div style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+            <a href="emergency.html" class="btn btn-secondary btn-sm">
+              <i data-lucide="shield-alert" style="width:14px;height:14px;"></i>
+              <span>Emergency Center</span>
+            </a>
+            <button class="btn btn-secondary btn-sm" id="btn-quick-sim" title="Toggle Simulation / Demo Mode">
+              <i data-lucide="flask-conical" style="width:14px;height:14px;"></i>
+              <span>Demo Mode</span>
+            </button>
           </div>
         </div>
 
-        <div class="telemetry-meta" style="flex:1 1 300px; max-width:550px;">
+        <div class="telemetry-meta" style="width:100%; margin-top:0.35rem;">
           <div id="status-description" style="color:#cbd5e1; font-size:0.875rem;">
             Awaiting authorized hardware device connection to evaluate live physiological vitals.
           </div>
-          <div style="font-size:0.775rem; color:var(--text-subtle); display:flex; gap:1rem; margin-top:0.25rem;">
+          
+          <!-- Triggering Parameters Notice (for Yellow & Red zones) -->
+          <div id="zone-triggers-summary" style="display:none; color:#fde68a; font-size:0.85rem; font-weight:600; margin-top:0.35rem;">
+          </div>
+
+          <!-- Precautionary / Action Recommendation -->
+          <div id="zone-action-recommendation" style="display:none; color:#e2e8f0; font-size:0.82rem; margin-top:0.25rem;">
+          </div>
+
+          <!-- Real-Time SMS Alert Dispatch Audit Trail -->
+          <div id="zone-sms-audit-bar" class="sms-audit-bar" style="display:none;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="message-square" style="width:14px;height:14px;color:#38bdf8;"></i>
+              <span id="sms-audit-text" style="color:#cbd5e1;">SMS Alert Dispatched</span>
+            </div>
+            <span class="sms-pill simulated" id="sms-audit-pill">SIMULATED SMS</span>
+          </div>
+
+          <!-- Medical Disclaimer for Normal Readings -->
+          <div id="zone-disclaimer-text" style="font-size:0.75rem; color:var(--text-subtle); margin-top:0.4rem; line-height:1.35;">
+            Normal readings indicate current physiological stability but do not substitute professional medical diagnosis.
+          </div>
+
+          <div style="font-size:0.775rem; color:var(--text-subtle); display:flex; gap:1.25rem; margin-top:0.5rem; flex-wrap:wrap;">
             <span>EDGE LINK: <strong id="edge-link-status" style="color:#94a3b8;">DISCONNECTED</strong></span>
             <span>FALL DETECTOR: <strong id="fall-hero-status" style="color:#a78bfa;">ARMED</strong></span>
             <span>GPS FIX: <strong id="gps-hero-status" style="color:#38bdf8;">ACQUIRED</strong></span>
+            <span>TELEMETRY FRESHNESS: <strong id="data-freshness-status" style="color:#cbd5e1;">AWAITING STREAM</strong></span>
           </div>
         </div>
+      </section>
 
-        <div style="display:flex; gap:0.5rem; align-items:center;">
-          <a href="emergency.html" class="btn btn-secondary btn-sm">
-            <i data-lucide="shield-alert" style="width:14px;height:14px;"></i>
-            <span>Emergency Center</span>
-          </a>
-          <button class="btn btn-secondary btn-sm" id="btn-quick-sim" title="Toggle Simulation / Demo Mode">
-            <i data-lucide="flask-conical" style="width:14px;height:14px;"></i>
-            <span>Demo Mode</span>
-          </button>
+      <!-- Hardware Telemetry Health & Subsystem Status Strip -->
+      <section class="device-telemetry-health-box" id="device-subsystems-strip">
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Battery</div>
+          <div style="font-size:0.95rem; font-weight:700; color:#34d399;" id="telemetry-battery">--</div>
+        </div>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Signal (RSSI)</div>
+          <div style="font-size:0.95rem; font-weight:700; color:var(--cyan-primary);" id="telemetry-rssi">--</div>
+        </div>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Firmware</div>
+          <div style="font-size:0.95rem; font-weight:700; color:#cbd5e1;" id="telemetry-firmware">--</div>
+        </div>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Sensors Status</div>
+          <div style="font-size:0.95rem; font-weight:700; color:#38bdf8;" id="telemetry-sensors-state">Attached (All Nominal)</div>
+        </div>
+        <div>
+          <div style="font-size:0.7rem; color:var(--text-muted); text-transform:uppercase;">Data Origin</div>
+          <div style="font-size:0.95rem; font-weight:700; color:#cbd5e1;" id="telemetry-origin-text">Standby</div>
         </div>
       </section>
 
@@ -434,6 +488,21 @@
           </div>
         </article>
 
+      </section>
+      
+      <!-- Dynamic / Extended Sensor Metrics Section -->
+      <section id="dynamic-sensor-section" class="dynamic-metrics-section" style="display:none; margin-bottom:var(--space-md);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-xs);">
+          <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.4rem;">
+            <i data-lucide="layers" style="width:18px;height:18px;color:var(--cyan-primary);"></i>
+            <span>Extended Hardware Telemetry &amp; Custom Metrics</span>
+          </h3>
+          <span class="status-badge normal" style="font-size:0.7rem;">AUTO-DISCOVERED SENSORS</span>
+        </div>
+        <p style="font-size:0.8rem; color:var(--text-muted); margin:0 0 var(--space-sm) 0;">
+          Additional documented biomedical measurements streamed by the connected IoT device adapter.
+        </p>
+        <div id="dynamic-sensor-grid" class="dynamic-metrics-grid"></div>
       </section>
 
       <!-- Center Analytics & Location Grid -->

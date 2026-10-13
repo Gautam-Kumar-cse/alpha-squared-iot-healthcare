@@ -10,6 +10,10 @@ import path from 'node:path';
 import deviceStore from '../api/device/device-store.js';
 import ingestHandler from '../api/device/ingest.js';
 import testHandler from '../api/device/test.js';
+import connectHandler, { isSafeUrl } from '../api/device/connect.js';
+import { evaluatePatientZones, CLINICAL_ZONES } from '../api/device/zone-evaluator.js';
+import sendSmsHandler from '../api/alerts/send-sms.js';
+import { zoneEngine, ZoneEngine } from '../web/js/services/zone-engine.js';
 
 console.log('====================================================');
 console.log('  ALPHA SQUARED IoT HEALTHCARE — VERIFICATION SUITE ');
@@ -420,6 +424,380 @@ runTest('Navigation: Global navbar includes About Us link for desktop and mobile
   const navbarJs = fs.readFileSync(path.resolve(process.cwd(), 'web/js/components/navbar.js'), 'utf-8');
   assert.ok(navbarJs.includes('href="about.html"'), 'navbar.js must contain href="about.html"');
   assert.ok(navbarJs.includes('activePage === \'about\''), 'navbar.js must support activePage === "about"');
+});
+
+// ---------------------------------------------------------
+// 10. Clinical Zone Evaluation Engine Tests (GREEN, YELLOW, RED)
+// ---------------------------------------------------------
+runTest('Zone Evaluator: Nominal resting biometrics classify as GREEN (Normal & Stable)', () => {
+  const result = evaluatePatientZones({
+    heartRate: 72,
+    spo2: 98,
+    temperature: { celsius: 36.8, fahrenheit: 98.24 },
+    bloodPressure: { systolic: 118, diastolic: 76 },
+    respiratoryRate: 16,
+    bloodGlucose: 95
+  });
+
+  assert.strictEqual(result.overallZone, CLINICAL_ZONES.GREEN);
+  assert.strictEqual(result.isNormal, true);
+  assert.strictEqual(result.isWarning, false);
+  assert.strictEqual(result.isEmergency, false);
+  assert.strictEqual(result.requiresSms, false);
+  assert.strictEqual(result.smsPriority, 'NONE');
+  assert.strictEqual(result.triggers.length, 0);
+  assert.ok(result.disclaimer.includes('Normal readings indicate'));
+});
+
+runTest('Zone Evaluator: Moderate deviations escalate to YELLOW (Caution & SMS notice)', () => {
+  // Test mild tachycardia
+  const tachy = evaluatePatientZones({ heartRate: 108 });
+  assert.strictEqual(tachy.overallZone, CLINICAL_ZONES.YELLOW);
+  assert.strictEqual(tachy.requiresSms, true);
+  assert.strictEqual(tachy.smsPriority, 'CAUTION');
+  assert.ok(tachy.triggers.some(t => t.parameter === 'heartRate'));
+
+  // Test mild bradycardia
+  const brady = evaluatePatientZones({ heartRate: 54 });
+  assert.strictEqual(brady.overallZone, CLINICAL_ZONES.YELLOW);
+
+  // Test mild hypoxia
+  const hypoxia = evaluatePatientZones({ spo2: 92 });
+  assert.strictEqual(hypoxia.overallZone, CLINICAL_ZONES.YELLOW);
+
+  // Test low-grade fever
+  const fever = evaluatePatientZones({ temperature: 37.9 });
+  assert.strictEqual(fever.overallZone, CLINICAL_ZONES.YELLOW);
+
+  // Test Stage 1 hypertension
+  const bp = evaluatePatientZones({ bloodPressure: { systolic: 132, diastolic: 84 } });
+  assert.strictEqual(bp.overallZone, CLINICAL_ZONES.YELLOW);
+
+  // Test tachypnea
+  const rr = evaluatePatientZones({ respiratoryRate: 23 });
+  assert.strictEqual(rr.overallZone, CLINICAL_ZONES.YELLOW);
+
+  // Test borderline hyperglycemia
+  const glucose = evaluatePatientZones({ bloodGlucose: 165 });
+  assert.strictEqual(glucose.overallZone, CLINICAL_ZONES.YELLOW);
+});
+
+runTest('Zone Evaluator: Critical biometric anomalies escalate to RED (Critical Emergency)', () => {
+  // Critical tachycardia
+  const critTachy = evaluatePatientZones({ heartRate: 135 });
+  assert.strictEqual(critTachy.overallZone, CLINICAL_ZONES.RED);
+  assert.strictEqual(critTachy.isEmergency, true);
+  assert.strictEqual(critTachy.requiresSms, true);
+  assert.strictEqual(critTachy.smsPriority, 'URGENT');
+
+  // Severe hypoxia
+  const critHypox = evaluatePatientZones({ spo2: 86 });
+  assert.strictEqual(critHypox.overallZone, CLINICAL_ZONES.RED);
+
+  // Hyperpyrexia
+  const critTemp = evaluatePatientZones({ temperature: 39.5 });
+  assert.strictEqual(critTemp.overallZone, CLINICAL_ZONES.RED);
+
+  // Hypertensive Crisis
+  const critBp = evaluatePatientZones({ bloodPressure: { systolic: 185, diastolic: 125 } });
+  assert.strictEqual(critBp.overallZone, CLINICAL_ZONES.RED);
+
+  // Severe Hypotension
+  const critHypo = evaluatePatientZones({ bloodPressure: { systolic: 82, diastolic: 55 } });
+  assert.strictEqual(critHypo.overallZone, CLINICAL_ZONES.RED);
+
+  // Critical respiratory rate
+  const critRr = evaluatePatientZones({ respiratoryRate: 7 });
+  assert.strictEqual(critRr.overallZone, CLINICAL_ZONES.RED);
+
+  // Critical hypoglycemia
+  const critSugar = evaluatePatientZones({ bloodGlucose: 45 });
+  assert.strictEqual(critSugar.overallZone, CLINICAL_ZONES.RED);
+});
+
+runTest('Zone Evaluator: Autonomous IMU Fall Detection instantly triggers RED Zone override', () => {
+  const result = evaluatePatientZones({
+    heartRate: 72,
+    spo2: 98,
+    fallDetected: true
+  });
+  assert.strictEqual(result.overallZone, CLINICAL_ZONES.RED);
+  assert.strictEqual(result.isEmergency, true);
+  assert.strictEqual(result.requiresSms, true);
+  assert.ok(result.triggers.some(t => t.parameter === 'fall'));
+});
+
+runTest('Zone Evaluator: Hardware Physical SOS Button push instantly triggers RED Zone override', () => {
+  const result = evaluatePatientZones({
+    heartRate: 74,
+    spo2: 99,
+    sosPressed: true
+  });
+  assert.strictEqual(result.overallZone, CLINICAL_ZONES.RED);
+  assert.strictEqual(result.isEmergency, true);
+  assert.strictEqual(result.requiresSms, true);
+  assert.ok(result.triggers.some(t => t.parameter === 'sos'));
+});
+
+// ---------------------------------------------------------
+// 11. Serverless SMS Gateway Dispatcher & Anti-Spam Cooldown Tests
+// ---------------------------------------------------------
+await runAsyncTest('SMS Dispatcher: Rejects non-POST requests with 405 Method Not Allowed', async () => {
+  const req = { method: 'GET', body: {} };
+  const res = createMockRes();
+  await sendSmsHandler(req, res);
+  assert.strictEqual(res.statusCode, 405);
+  assert.strictEqual(res.body.success, false);
+});
+
+await runAsyncTest('SMS Dispatcher: Correctly builds RED Zone emergency alert with location and vitals snapshot', async () => {
+  const req = {
+    method: 'POST',
+    body: {
+      patientId: 'PATIENT-TEST-01',
+      patientName: 'Rahul Verma',
+      zone: 'RED',
+      triggers: [{ parameter: 'heartRate', label: 'Critical Tachycardia', value: '142 BPM' }],
+      vitals: {
+        heartRate: 142,
+        spo2: 89,
+        temperature: { celsius: 38.6 },
+        bloodPressure: { systolic: 160, diastolic: 100 }
+      },
+      location: { latitude: 24.7955, longitude: 84.9995 },
+      bypassCooldown: true
+    }
+  };
+  const res = createMockRes();
+  await sendSmsHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.success, true);
+  assert.strictEqual(res.body.zone, 'RED');
+  assert.ok(res.body.smsBody.includes('Rahul Verma'));
+  assert.ok(res.body.smsBody.includes('RED ZONE (Critical)'));
+  assert.ok(res.body.smsBody.includes('https://maps.google.com/?q=24.7955,84.9995'));
+  assert.ok(res.body.smsBody.includes('142 BPM'));
+  assert.ok(res.body.smsBody.includes('89%'));
+  assert.ok(res.body.smsBody.includes('38.6°C'));
+  assert.ok(res.body.smsBody.includes('160/100 mmHg'));
+});
+
+await runAsyncTest('SMS Dispatcher: Correctly builds YELLOW Zone cautionary alert with advice', async () => {
+  const req = {
+    method: 'POST',
+    body: {
+      patientId: 'PATIENT-TEST-02',
+      patientName: 'Priya Sharma',
+      zone: 'YELLOW',
+      triggers: [{
+        parameter: 'bloodPressure',
+        label: 'Pre-Hypertension',
+        value: '132/86 mmHg',
+        recommendedAction: 'Rest in quiet room and re-measure in 15 minutes.'
+      }],
+      bypassCooldown: true
+    }
+  };
+  const res = createMockRes();
+  await sendSmsHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.success, true);
+  assert.strictEqual(res.body.zone, 'YELLOW');
+  assert.ok(res.body.smsBody.includes('Priya Sharma'));
+  assert.ok(res.body.smsBody.includes('YELLOW ZONE (Warning)'));
+  assert.ok(res.body.smsBody.includes('Pre-Hypertension: 132/86 mmHg'));
+  assert.ok(res.body.smsBody.includes('Rest in quiet room and re-measure in 15 minutes.'));
+});
+
+await runAsyncTest('SMS Dispatcher: Verifies test SMS trigger mode', async () => {
+  const req = {
+    method: 'POST',
+    body: {
+      isTest: true,
+      patientName: 'Test Patient',
+      patientPhone: '+919999988888'
+    }
+  };
+  const res = createMockRes();
+  await sendSmsHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.success, true);
+  assert.ok(res.body.smsBody.includes('[ALPHA SQUARED TEST SMS]'));
+  assert.ok(res.body.smsBody.includes('SMS Gateway is verified and functional'));
+});
+
+await runAsyncTest('SMS Dispatcher: Enforces cooldown suppression against caregiver notification spam', async () => {
+  const reqPayload = {
+    method: 'POST',
+    body: {
+      patientId: 'PATIENT-COOLDOWN-TEST',
+      patientName: 'Cooldown Subject',
+      zone: 'YELLOW',
+      triggers: [{ parameter: 'heartRate', zone: 'YELLOW', label: 'Tachycardia', value: '112 BPM' }],
+      cooldownSeconds: 300
+    }
+  };
+
+  // 1st dispatch should succeed
+  const res1 = createMockRes();
+  await sendSmsHandler(reqPayload, res1);
+  assert.strictEqual(res1.statusCode, 200);
+  assert.strictEqual(res1.body.success, true);
+  assert.ok(res1.body.status === 'SIMULATED_DISPATCH' || res1.body.status === 'DISPATCHED_LIVE');
+
+  // Immediate 2nd dispatch for same patient and trigger should enter COOLDOWN_ACTIVE
+  const res2 = createMockRes();
+  await sendSmsHandler(reqPayload, res2);
+  assert.strictEqual(res2.statusCode, 200);
+  assert.strictEqual(res2.body.status, 'COOLDOWN_ACTIVE');
+  assert.ok(res2.body.cooldownRemainingSeconds > 0);
+  assert.ok(res2.body.message.includes('Alert suppressed to prevent caregiver SMS fatigue'));
+
+  // 3rd dispatch with bypassCooldown: true should successfully dispatch
+  const bypassPayload = {
+    method: 'POST',
+    body: {
+      ...reqPayload.body,
+      bypassCooldown: true
+    }
+  };
+  const res3 = createMockRes();
+  await sendSmsHandler(bypassPayload, res3);
+  assert.strictEqual(res3.statusCode, 200);
+  assert.ok(res3.body.status === 'SIMULATED_DISPATCH' || res3.body.status === 'DISPATCHED_LIVE');
+});
+
+// ---------------------------------------------------------
+// 12. SSRF Protection & Hardware API Security Tests
+// ---------------------------------------------------------
+runTest('SSRF Defense: isSafeUrl strictly rejects cloud instance metadata service (169.254.169.254)', () => {
+  const test1 = isSafeUrl('http://169.254.169.254/latest/meta-data/');
+  assert.strictEqual(test1.safe, false);
+  assert.ok(test1.reason.includes('metadata service is strictly prohibited'));
+
+  const test2 = isSafeUrl('http://169.254.0.1/sensitive');
+  assert.strictEqual(test2.safe, false);
+
+  const test3 = isSafeUrl('https://metadata.google.internal/computeMetadata/v1/');
+  assert.strictEqual(test3.safe, false);
+  assert.ok(test3.reason.includes('internal cloud metadata domain'));
+});
+
+runTest('SSRF Defense: isSafeUrl rejects forbidden non-HTTP protocols', () => {
+  const ftp = isSafeUrl('ftp://192.168.1.100/data');
+  assert.strictEqual(ftp.safe, false);
+  assert.ok(ftp.reason.includes('Only HTTP and HTTPS are permitted'));
+
+  const file = isSafeUrl('file:///etc/passwd');
+  assert.strictEqual(file.safe, false);
+
+  const gopher = isSafeUrl('gopher://evil.com');
+  assert.strictEqual(gopher.safe, false);
+});
+
+runTest('SSRF Defense: isSafeUrl approves valid HTTP/HTTPS endpoints', () => {
+  const localGw = isSafeUrl('http://192.168.1.120:8080/api/vitals');
+  assert.strictEqual(localGw.safe, true);
+
+  const secureGateway = isSafeUrl('https://iot-gateway.gp-gaya.edu/telemetry');
+  assert.strictEqual(secureGateway.safe, true);
+});
+
+await runAsyncTest('Hardware Connect API: Actively blocks metadata SSRF attempts via HTTP endpoint', async () => {
+  const req = {
+    method: 'POST',
+    body: {
+      deviceId: 'ESP32-SSRF-ATTACK',
+      apiKey: 'test-key-123',
+      apiBaseUrl: 'http://169.254.169.254/latest/meta-data/'
+    }
+  };
+  const res = createMockRes();
+  await connectHandler(req, res);
+  assert.strictEqual(res.statusCode, 400);
+  assert.strictEqual(res.body.success, false);
+  assert.ok(res.body.error.includes('Insecure Hardware API URL rejected'));
+});
+
+// ---------------------------------------------------------
+// 13. Dynamic Custom Metrics & Sensor Extensibility Tests
+// ---------------------------------------------------------
+await runAsyncTest('Ingestion API: Captures dynamic unmapped sensor metrics into customMetrics', async () => {
+  const req = {
+    method: 'POST',
+    body: {
+      deviceId: 'ESP32-EXTENSIBLE-TEST',
+      patientId: 'PATIENT-001',
+      heartRate: 76,
+      galvanicSkinResponse: 420,
+      ambientHumidity: 65,
+      airQualityPpm: 18,
+      extendedParameters: {
+        skinTempArm: 35.4
+      }
+    }
+  };
+  const res = createMockRes();
+  await ingestHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.success, true);
+  assert.ok(res.body.telemetry.customMetrics != null);
+  assert.strictEqual(res.body.telemetry.customMetrics.galvanicSkinResponse.value, 420);
+  assert.strictEqual(res.body.telemetry.customMetrics.ambientHumidity.value, 65);
+  assert.strictEqual(res.body.telemetry.customMetrics.airQualityPpm.value, 18);
+  assert.strictEqual(res.body.telemetry.customMetrics.skinTempArm, 35.4);
+});
+
+await runAsyncTest('Ingestion API: Automatically executes clinical zone evaluation and records SMS audit', async () => {
+  const req = {
+    method: 'POST',
+    body: {
+      deviceId: 'ESP32-ZONE-INGEST-CRITICAL',
+      patientId: 'PATIENT-001',
+      patientName: 'Jane Doe',
+      heartRate: 145,
+      spo2: 88,
+      patientPhone: '+919999900000'
+    }
+  };
+  const res = createMockRes();
+  await ingestHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.zone, 'RED');
+  assert.strictEqual(res.body.requiresSms, true);
+  assert.strictEqual(res.body.emergencyDetected, true);
+  assert.ok(res.body.smsDispatch != null);
+  assert.strictEqual(res.body.smsDispatch.zone, 'RED');
+});
+
+// ---------------------------------------------------------
+// 14. Client-Side Zone Engine Consistency Tests
+// ---------------------------------------------------------
+runTest('Client Zone Engine: Mirrors backend clinical boundaries accurately', () => {
+  // Green
+  const green = zoneEngine.evaluate({ heartRate: 72, spo2: 98, temperature: 36.8 });
+  assert.strictEqual(green.overallZone, CLINICAL_ZONES.GREEN);
+  assert.strictEqual(green.isNormal, true);
+  assert.strictEqual(green.requiresSms, false);
+
+  // Yellow
+  const yellow = zoneEngine.evaluate({ heartRate: 112, spo2: 97 });
+  assert.strictEqual(yellow.overallZone, CLINICAL_ZONES.YELLOW);
+  assert.strictEqual(yellow.isWarning, true);
+  assert.strictEqual(yellow.requiresSms, true);
+
+  // Red vitals
+  const redVitals = zoneEngine.evaluate({ heartRate: 46, spo2: 96 });
+  assert.strictEqual(redVitals.overallZone, CLINICAL_ZONES.RED);
+  assert.strictEqual(redVitals.isEmergency, true);
+
+  // Red Fall
+  const redFall = zoneEngine.evaluate({ fallDetected: true });
+  assert.strictEqual(redFall.overallZone, CLINICAL_ZONES.RED);
+
+  // Red SOS
+  const redSos = zoneEngine.evaluate({ sosPressed: true });
+  assert.strictEqual(redSos.overallZone, CLINICAL_ZONES.RED);
 });
 
 // ---------------------------------------------------------

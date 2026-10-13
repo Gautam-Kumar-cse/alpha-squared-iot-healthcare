@@ -286,3 +286,178 @@
   border-color: rgba(0, 240, 255, 0.4);
 }
 
+/* ==========================================================================
+   Clinical Zone Engine & Dynamic Telemetry Card Styles
+   ========================================================================== */
+
+/* Zone Status Hero Bar */
+.telemetry-hero.zone-green {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.08);
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.15);
+}
+
+.telemetry-hero.zone-yellow {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.1);
+  box-shadow: 0 0 25px rgba(245, 158, 11, 0.25);
+  animation: pulse-yellow-subtle 3s infinite ease-in-out;
+}
+
+.telemetry-hero.zone-red {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.14);
+  box-shadow: 0 0 35px rgba(239, 68, 68, 0.4);
+  animation: pulse-red-emergency 1.8s infinite ease-in-out;
+}
+
+@keyframes pulse-yellow-subtle {
+  0% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
+  50% { box-shadow: 0 0 28px rgba(245, 158, 11, 0.35); }
+  100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.15); }
+}
+
+@keyframes pulse-red-emergency {
+  0% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+  50% { box-shadow: 0 0 45px rgba(239, 68, 68, 0.6); }
+  100% { box-shadow: 0 0 20px rgba(239, 68, 68, 0.3); }
+}
+
+/* Zone Indicator Badges */
+.status-badge.zone-green {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+.status-badge.zone-yellow {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-color: #f59e0b;
+  font-weight: 700;
+}
+
+.status-badge.zone-red {
+  background: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  border-color: #ef4444;
+  font-weight: 800;
+  animation: blink-red 1s infinite alternate;
+}
+
+@keyframes blink-red {
+  from { opacity: 0.8; }
+  to { opacity: 1; }
+}
+
+/* Data Origin Integrity Badges */
+.source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: var(--radius-full);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.source-badge.real {
+  background: rgba(0, 240, 255, 0.12);
+  color: var(--cyan-primary);
+  border: 1px solid var(--border-cyan);
+}
+
+.source-badge.demo {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid #f59e0b;
+}
+
+/* SMS Delivery Notification Audit Strip */
+.sms-audit-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: var(--radius-sm);
+  background: rgba(6, 10, 18, 0.75);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.78rem;
+  margin-top: 0.5rem;
+}
+
+.sms-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+.sms-pill.sent {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid #10b981;
+}
+
+.sms-pill.simulated {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid #38bdf8;
+}
+
+.sms-pill.cooldown {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid #f59e0b;
+}
+
+/* Vital Card Zone Borders */
+.vital-card.card-zone-green {
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+.vital-card.card-zone-yellow {
+  border-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.vital-card.card-zone-red {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.09);
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.25);
+}
+
+/* Dynamic Sensor Cards Container */
+.dynamic-metrics-section {
+  margin-top: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.dynamic-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: var(--space-md);
+}
+
+/* Device Telemetry Health Strip */
+.device-telemetry-health-box {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  background: rgba(10, 16, 30, 0.65);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--space-md);
+}
+
+

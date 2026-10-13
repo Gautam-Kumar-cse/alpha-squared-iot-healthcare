@@ -2,12 +2,31 @@
  * ALPHA SQUARED - Hardware API Connection Diagnostic & Test Endpoint
  * 
  * Verifies reachability, measures round-trip latency (ping),
- * tests authentication credentials, and reports protocol compatibility.
+ * tests authentication credentials, validates SSRF security, and reports protocol compatibility.
  * 
  * Never returns private API keys to the frontend client.
  */
 
 import deviceStore from './device-store.js';
+
+export function isSafeUrl(urlString) {
+  try {
+    const parsed = new URL(urlString);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return { safe: false, reason: 'Invalid protocol. Only HTTP and HTTPS are permitted.' };
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    if (hostname === '169.254.169.254' || hostname.startsWith('169.254.')) {
+      return { safe: false, reason: 'Access to cloud instance metadata service is strictly prohibited (SSRF Protection).' };
+    }
+    if (hostname.endsWith('.internal') || hostname === 'metadata.google.internal') {
+      return { safe: false, reason: 'Access to internal cloud metadata domain is prohibited (SSRF Protection).' };
+    }
+    return { safe: true, parsed };
+  } catch {
+    return { safe: false, reason: 'Malformed or invalid URL string.' };
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -36,9 +55,21 @@ export default async function handler(req, res) {
 
     // 1. Diagnostic test for external Hardware API Base URL
     if (effectiveBaseUrl) {
+      const urlCheck = isSafeUrl(effectiveBaseUrl);
+      if (!urlCheck.safe) {
+        return res.status(400).json({
+          success: false,
+          status: 'INSECURE_ENDPOINT',
+          deviceId: cleanDeviceId,
+          protocol: effectiveProtocol,
+          latencyMs: Date.now() - startTime,
+          error: `Insecure Hardware API URL rejected: ${urlCheck.reason}`,
+          hint: 'Verify the URL does not target prohibited cloud metadata or internal endpoints.'
+        });
+      }
+
       try {
         let testUrl = effectiveBaseUrl.replace(/\/+$/, '');
-        // Append health or status check path if not pointing to a direct endpoint
         if (!testUrl.includes('/status') && !testUrl.includes('/ping') && !testUrl.includes('/health')) {
           testUrl = `${testUrl}/devices/${encodeURIComponent(cleanDeviceId)}/status`;
         }
@@ -135,4 +166,3 @@ export default async function handler(req, res) {
     });
   }
 }
-

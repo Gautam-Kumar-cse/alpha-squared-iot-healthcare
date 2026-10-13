@@ -31,12 +31,21 @@
         </div>
 
         <!-- Filter Controls -->
-        <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
-          <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">TIMELINE:</span>
-          <button class="btn btn-secondary btn-sm time-filter-btn active" data-range="daily">Daily (24h)</button>
-          <button class="btn btn-secondary btn-sm time-filter-btn" data-range="weekly">Weekly (7d)</button>
-          <button class="btn btn-secondary btn-sm time-filter-btn" data-range="monthly">Monthly (30d)</button>
-          <button class="btn btn-secondary btn-sm time-filter-btn" data-range="all">All Records</button>
+        <div style="display:flex; gap:0.75rem; align-items:center; flex-wrap:wrap;">
+          <div style="display:flex; gap:0.35rem; align-items:center;">
+            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">TIMELINE:</span>
+            <button class="btn btn-secondary btn-sm time-filter-btn active" data-range="daily">Daily (24h)</button>
+            <button class="btn btn-secondary btn-sm time-filter-btn" data-range="weekly">Weekly (7d)</button>
+            <button class="btn btn-secondary btn-sm time-filter-btn" data-range="monthly">Monthly (30d)</button>
+            <button class="btn btn-secondary btn-sm time-filter-btn" data-range="all">All Records</button>
+          </div>
+          <div style="display:flex; gap:0.35rem; align-items:center;">
+            <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">CLINICAL ZONE:</span>
+            <button class="btn btn-secondary btn-sm zone-filter-btn active" data-zone="ALL">All</button>
+            <button class="btn btn-secondary btn-sm zone-filter-btn" data-zone="GREEN" style="color:#34d399;">Green</button>
+            <button class="btn btn-secondary btn-sm zone-filter-btn" data-zone="YELLOW" style="color:#fbbf24;">Yellow</button>
+            <button class="btn btn-secondary btn-sm zone-filter-btn" data-zone="RED" style="color:#fca5a5;">Red</button>
+          </div>
         </div>
       </section>
 
@@ -120,12 +129,13 @@
                 <th>Heart Rate</th>
                 <th>SpO2</th>
                 <th>Temperature</th>
+                <th>Clinical Health Zone</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody id="history-table-tbody">
               <tr>
-                <td colspan="6" style="text-align:center; color:var(--text-subtle); padding:var(--space-lg);">
+                <td colspan="7" style="text-align:center; color:var(--text-subtle); padding:var(--space-lg);">
                   Loading historical telemetry data...
                 </td>
               </tr>

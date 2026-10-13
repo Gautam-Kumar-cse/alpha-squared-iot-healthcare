@@ -9,10 +9,15 @@
  * - High-precision biometrics (HR, SpO2, Dual-unit Temp, Blood Pressure, RR, Glucose, ECG)
  * - Hardware GPS coordinates & satellite fix status
  * - Fall detection & SOS hardware button interrupt flags
+ * - Real-time Clinical Zone Evaluation (GREEN, YELLOW, RED)
+ * - Automatic SMS Alert Triggering with cooldown suppression
+ * - Dynamic custom/extended health parameters extraction
  * - Autonomous forwarding to Firebase Realtime Database when configured
  */
 
 import deviceStore from './device-store.js';
+import { evaluatePatientZones } from './zone-evaluator.js';
+import sendSmsHandler from '../alerts/send-sms.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -25,8 +30,9 @@ export default async function handler(req, res) {
   try {
     // 1. Secure Authentication Verification
     const configuredApiKey = process.env.HARDWARE_API_KEY;
-    const authHeader = req.headers['authorization'] || '';
-    const xApiKey = req.headers['x-api-key'] || '';
+    const reqHeaders = req.headers || {};
+    const authHeader = reqHeaders['authorization'] || '';
+    const xApiKey = reqHeaders['x-api-key'] || '';
 
     const providedKey = authHeader.startsWith('Bearer ')
       ? authHeader.slice(7).trim()
@@ -54,6 +60,7 @@ export default async function handler(req, res) {
     }
 
     const patientId = (payload.patientId || process.env.DEFAULT_PATIENT_ID || 'PATIENT-001').trim();
+    const patientName = payload.patientName || process.env.DEFAULT_PATIENT_NAME || 'Jane Doe';
     const timestamp = payload.timestamp ? Number(payload.timestamp) : Date.now();
     const ingestedParameters = [];
 
@@ -61,6 +68,7 @@ export default async function handler(req, res) {
     const normalized = {
       deviceId,
       patientId,
+      patientName,
       timestamp,
       isLive: true,
       isDemo: false
@@ -73,7 +81,7 @@ export default async function handler(req, res) {
       normalized.heartRate = {
         value: hrVal,
         unit: 'BPM',
-        status: hrVal > 105 ? 'ELEVATED' : (hrVal < 55 ? 'LOW' : 'NORMAL')
+        status: hrVal > 120 ? 'CRITICAL_HIGH' : (hrVal > 100 ? 'ELEVATED' : (hrVal < 50 ? 'CRITICAL_LOW' : (hrVal < 60 ? 'LOW' : 'NORMAL')))
       };
       ingestedParameters.push('heartRate');
     }
@@ -85,7 +93,7 @@ export default async function handler(req, res) {
       normalized.spo2 = {
         value: spo2Val,
         unit: '%',
-        status: spo2Val < 92 ? 'LOW' : 'OPTIMAL'
+        status: spo2Val < 90 ? 'CRITICAL_HYPOXIA' : (spo2Val < 95 ? 'MILD_HYPOXIA' : 'OPTIMAL')
       };
       ingestedParameters.push('spo2');
     }
@@ -99,7 +107,7 @@ export default async function handler(req, res) {
         celsius: c,
         fahrenheit: f,
         unit: '°C',
-        status: c > 37.5 ? 'FEVER' : (c < 35.5 ? 'HYPOTHERMIC' : 'NORMAL')
+        status: c > 38.5 ? 'HIGH_FEVER' : (c >= 37.6 ? 'LOW_FEVER' : (c < 35.0 ? 'SEVERE_HYPOTHERMIA' : (c < 36.5 ? 'MILD_HYPOTHERMIA' : 'NORMAL')))
       };
       ingestedParameters.push('temperature');
     }
@@ -128,7 +136,7 @@ export default async function handler(req, res) {
       normalized.respiratoryRate = {
         value: rrVal,
         unit: 'breaths/min',
-        status: rrVal > 22 ? 'HIGH' : (rrVal < 12 ? 'LOW' : 'NORMAL')
+        status: rrVal > 25 ? 'CRITICAL_HIGH' : (rrVal > 20 ? 'ELEVATED' : (rrVal < 9 ? 'CRITICAL_LOW' : (rrVal < 12 ? 'LOW' : 'NORMAL')))
       };
       ingestedParameters.push('respiratoryRate');
     }
@@ -141,7 +149,7 @@ export default async function handler(req, res) {
         value: bgVal,
         unit: payload.glucoseUnit || 'mg/dL',
         mealContext: payload.mealContext || 'Fasting',
-        status: bgVal > 140 ? 'HIGH' : (bgVal < 70 ? 'LOW' : 'NORMAL')
+        status: bgVal >= 200 ? 'CRITICAL_HIGH' : (bgVal > 140 ? 'ELEVATED' : (bgVal < 60 ? 'CRITICAL_LOW' : (bgVal < 70 ? 'LOW' : 'NORMAL')))
       };
       ingestedParameters.push('bloodGlucose');
     }
@@ -197,57 +205,146 @@ export default async function handler(req, res) {
       ingestedParameters.push('gps');
     }
 
-    // Hardware Safety Flags
+    // Hardware Safety Flags & Telemetry Health
     normalized.fallDetected = Boolean(payload.fallDetected);
     normalized.sosPressed = Boolean(payload.sosPressed);
     normalized.batteryLevel = payload.batteryLevel || (payload.battery ? `${payload.battery}%` : 'Good');
     normalized.wifiRssi = payload.wifiRssi != null ? Number(payload.wifiRssi) : -58;
+    normalized.firmwareVersion = payload.firmwareVersion || payload.firmware || 'v2.4.0';
+    normalized.sensorStatus = payload.sensorStatus || {
+      opticalPulse: 'ATTACHED',
+      temperatureProbe: 'ATTACHED',
+      imuMotion: 'ATTACHED',
+      satelliteGps: normalized.gps ? 'LOCKED' : 'SEARCHING'
+    };
 
-    // 4. Critical Emergency Evaluation
-    let emergencyDetected = false;
-    let emergencyReason = null;
+    // 4. Extract Dynamic / Custom Sensor Parameters
+    // Detects any additional documented sensor fields without breaking layout
+    const knownKeys = new Set([
+      'deviceId', 'patientId', 'patientName', 'timestamp',
+      'heartRate', 'pulseRate', 'pulse', 'hr',
+      'spo2', 'bloodOxygen', 'oxygenSaturation',
+      'temperature', 'bodyTemperature', 'temp',
+      'bloodPressure', 'systolic', 'diastolic',
+      'respiratoryRate', 'breathsPerMinute', 'rr',
+      'bloodGlucose', 'glucose', 'bg', 'glucoseUnit', 'mealContext',
+      'ecg', 'steps', 'activity', 'calories', 'distanceKm', 'sleep',
+      'gps', 'latitude', 'longitude', 'altitude', 'accuracy', 'satellites',
+      'fallDetected', 'sosPressed', 'batteryLevel', 'battery', 'wifiRssi',
+      'firmwareVersion', 'firmware', 'sensorStatus', 'extendedParameters', 'customMetrics',
+      'patientPhone', 'contacts', 'isDemo', 'isLive'
+    ]);
 
-    if (normalized.sosPressed) {
-      emergencyDetected = true;
-      emergencyReason = 'Hardware Physical SOS Pushbutton Triggered';
-    } else if (normalized.fallDetected) {
-      emergencyDetected = true;
-      emergencyReason = 'IMU Abrupt Impact & Free-fall Spike Detected';
-    } else if (normalized.spo2?.value && normalized.spo2.value < 88) {
-      emergencyDetected = true;
-      emergencyReason = `Severe Hypoxia Detected (${normalized.spo2.value}% SpO2)`;
-    } else if (normalized.heartRate?.value && (normalized.heartRate.value > 140 || normalized.heartRate.value < 40)) {
-      emergencyDetected = true;
-      emergencyReason = `Critical Cardiac Rate (${normalized.heartRate.value} BPM)`;
+    const customMetrics = {};
+    for (const [k, v] of Object.entries(payload)) {
+      if (!knownKeys.has(k) && v != null && typeof v !== 'object') {
+        customMetrics[k] = {
+          name: k.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()),
+          value: v,
+          unit: guessUnit(k)
+        };
+      }
+    }
+    if (payload.extendedParameters && typeof payload.extendedParameters === 'object') {
+      Object.assign(customMetrics, payload.extendedParameters);
+    }
+    if (Object.keys(customMetrics).length > 0) {
+      normalized.customMetrics = customMetrics;
     }
 
-    normalized.emergencyState = emergencyDetected ? 'EMERGENCY' : 'NORMAL';
-    normalized.emergencyReason = emergencyReason;
+    // -------------------------------------------------------------
+    // 5. Automatic Health Evaluation (GREEN, YELLOW, RED ZONES)
+    // -------------------------------------------------------------
+    const zoneEvaluation = evaluatePatientZones(normalized);
 
-    // 5. Commit to Reactive Store
+    normalized.zone = zoneEvaluation.overallZone;
+    normalized.overallZone = zoneEvaluation.overallZone;
+    normalized.zoneLabel = zoneEvaluation.zoneLabel;
+    normalized.zoneTriggers = zoneEvaluation.triggers;
+    normalized.measurementZones = zoneEvaluation.measurementZones;
+    normalized.requiresSms = zoneEvaluation.requiresSms;
+    normalized.smsPriority = zoneEvaluation.smsPriority;
+    normalized.disclaimer = zoneEvaluation.disclaimer;
+
+    // Backward-compatibility aliases
+    normalized.emergencyDetected = zoneEvaluation.isEmergency;
+    normalized.emergencyState = zoneEvaluation.isEmergency ? 'EMERGENCY' : (zoneEvaluation.isWarning ? 'WARNING' : 'NORMAL');
+    normalized.emergencyReason = zoneEvaluation.triggers.length > 0 
+      ? zoneEvaluation.triggers.map(t => t.label).join('; ')
+      : null;
+
+    // -------------------------------------------------------------
+    // 6. Automatic SMS Notification Dispatch (Yellow & Red Zones)
+    // -------------------------------------------------------------
+    let smsDispatchResult = null;
+    if (zoneEvaluation.requiresSms) {
+      try {
+        const smsReq = {
+          method: 'POST',
+          body: {
+            patientId,
+            patientName,
+            zone: zoneEvaluation.overallZone,
+            triggers: zoneEvaluation.triggers,
+            vitals: {
+              heartRate: normalized.heartRate?.value,
+              spo2: normalized.spo2?.value,
+              temperature: normalized.temperature,
+              bloodPressure: normalized.bloodPressure,
+              respiratoryRate: normalized.respiratoryRate?.value,
+              bloodGlucose: normalized.bloodGlucose?.value
+            },
+            location: normalized.gps,
+            patientPhone: payload.patientPhone || null,
+            contacts: payload.contacts || []
+          }
+        };
+
+        let smsResponseData = null;
+        const smsMockRes = {
+          status: function(c) { this.statusCode = c; return this; },
+          json: function(d) { smsResponseData = d; return this; },
+          setHeader: function() {},
+          end: function() {}
+        };
+
+        await sendSmsHandler(smsReq, smsMockRes);
+        smsDispatchResult = smsResponseData;
+        normalized.lastSmsDispatch = smsDispatchResult;
+      } catch (smsErr) {
+        console.warn('[AUTOMATIC_SMS_DISPATCH_WARN]', smsErr.message);
+        normalized.lastSmsDispatch = {
+          success: false,
+          error: smsErr.message,
+          timestamp: Date.now()
+        };
+      }
+    }
+
+    // -------------------------------------------------------------
+    // 7. Commit to Reactive Store
+    // -------------------------------------------------------------
     deviceStore.setLatestTelemetry(deviceId, normalized);
 
-    // 6. Asynchronous Cloud Mirroring to Firebase RTDB (if configured)
+    // -------------------------------------------------------------
+    // 8. Asynchronous Cloud Mirroring to Firebase RTDB (if configured)
+    // -------------------------------------------------------------
     const firebaseHost = process.env.FIREBASE_DATABASE_URL;
     if (firebaseHost) {
       const fbAuth = process.env.FIREBASE_AUTH_SECRET || '';
       const authParam = fbAuth ? `?auth=${encodeURIComponent(fbAuth)}` : '';
 
-      // Non-blocking background sync
       Promise.allSettled([
-        // Update device telemetry
         fetch(`${firebaseHost.replace(/\/+$/, '')}/devices/${encodeURIComponent(deviceId)}/telemetry/latest.json${authParam}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(normalized)
         }),
-        // Update patient current view
         fetch(`${firebaseHost.replace(/\/+$/, '')}/patients/${encodeURIComponent(patientId)}/current.json${authParam}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(normalized)
         }),
-        // Append to history
         fetch(`${firebaseHost.replace(/\/+$/, '')}/devices/${encodeURIComponent(deviceId)}/history.json${authParam}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -260,13 +357,18 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       success: true,
-      message: 'Hardware telemetry successfully ingested and verified.',
+      message: 'Hardware telemetry successfully ingested, zone-evaluated, and verified.',
       deviceId,
       patientId,
       timestamp,
+      zone: zoneEvaluation.overallZone,
+      zoneLabel: zoneEvaluation.zoneLabel,
+      zoneTriggers: zoneEvaluation.triggers,
+      requiresSms: zoneEvaluation.requiresSms,
+      smsDispatch: smsDispatchResult,
       ingestedParameters,
-      emergencyDetected,
-      emergencyReason,
+      emergencyDetected: zoneEvaluation.isEmergency,
+      emergencyReason: normalized.emergencyReason,
       telemetry: normalized
     });
 
@@ -287,3 +389,13 @@ function classifyBloodPressure(sys, dia) {
   return 'NORMAL';
 }
 
+function guessUnit(key) {
+  const lk = key.toLowerCase();
+  if (lk.includes('percent') || lk.includes('index') || lk.includes('ratio')) return '%';
+  if (lk.includes('weight') || lk.includes('mass')) return 'kg';
+  if (lk.includes('cal')) return 'kcal';
+  if (lk.includes('volt')) return 'V';
+  if (lk.includes('amp')) return 'mA';
+  if (lk.includes('ohm') || lk.includes('conductance')) return 'µS';
+  return '';
+}

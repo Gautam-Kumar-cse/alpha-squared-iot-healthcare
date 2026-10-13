@@ -1,13 +1,13 @@
 /**
  * ALPHA SQUARED - Emergency Detection & Vital Assessment Service
- * Evaluates multi-parameter telemetry against configurable clinical prototype thresholds.
- * Handles fall confirmation windows, critical vital escalation, and duplicate alert suppression.
+ * Upgraded with Clinical Green, Yellow, and Red Zone Engine & Automated SMS Dispatch
  *
- * DISCLAIMER: Prototype algorithm for hackathon demonstration. Not a certified medical device.
+ * DISCLAIMER: Clinical prototype algorithm for hackathon demonstration. Not a certified medical device.
  */
 
 import { dbService } from './db-service.js';
 import { showToast } from '../components/notification-toast.js';
+import { zoneEngine, CLINICAL_ZONES } from './zone-engine.js';
 
 export const DEFAULT_THRESHOLDS = {
   hrLowWarning: 55,
@@ -45,83 +45,54 @@ export class EmergencyDetector {
   }
 
   /**
-   * Evaluate a full telemetry frame
+   * Evaluate a full telemetry frame using Centralized Zone Engine
    */
   evaluateTelemetry(reading) {
-    const issues = [];
-    let state = 'NORMAL';
+    const zoneEval = zoneEngine.evaluate(reading);
 
-    const { heartRate, spo2, temperature, fallDetected, sosPressed } = reading;
-    const th = this.thresholds;
+    const issues = zoneEval.triggers.map(t => `${t.label} (${t.value})`);
+    const state = zoneEval.overallZone === CLINICAL_ZONES.RED 
+      ? 'EMERGENCY' 
+      : (zoneEval.overallZone === CLINICAL_ZONES.YELLOW ? 'WARNING' : 'NORMAL');
 
-    // Check SOS
-    if (sosPressed) {
+    if (reading.sosPressed) {
       return {
         state: 'EMERGENCY',
+        zone: CLINICAL_ZONES.RED,
+        zoneLabel: zoneEval.zoneLabel,
         reason: 'Manual SOS Emergency Signal Triggered',
         eventType: 'MANUAL_SOS',
-        escalateImmediately: true
+        escalateImmediately: true,
+        triggers: zoneEval.triggers
       };
     }
 
-    // Check Fall
-    if (fallDetected) {
-      issues.push('Sudden Impact / Fall Detected');
-      state = 'EMERGENCY';
+    if (reading.fallDetected) {
+      return {
+        state: 'EMERGENCY',
+        zone: CLINICAL_ZONES.RED,
+        zoneLabel: zoneEval.zoneLabel,
+        reason: 'Sudden Impact / Fall Detected',
+        eventType: 'FALL_EVENT',
+        escalateImmediately: true,
+        triggers: zoneEval.triggers
+      };
     }
-
-    // Check Heart Rate
-    if (heartRate != null) {
-      if (heartRate >= th.hrHighCritical) {
-        issues.push(`Severe Tachycardia (${heartRate} BPM)`);
-        state = 'EMERGENCY';
-      } else if (heartRate <= th.hrLowCritical) {
-        issues.push(`Severe Bradycardia (${heartRate} BPM)`);
-        state = 'EMERGENCY';
-      } else if (heartRate >= th.hrHighWarning || heartRate <= th.hrLowWarning) {
-        issues.push(`Abnormal Heart Rate (${heartRate} BPM)`);
-        if (state !== 'EMERGENCY') state = 'WARNING';
-      }
-    }
-
-    // Check SpO2
-    if (spo2 != null) {
-      if (spo2 <= th.spo2LowCritical) {
-        issues.push(`Critical Hypoxia (SpO₂: ${spo2}%)`);
-        state = 'EMERGENCY';
-      } else if (spo2 <= th.spo2LowWarning) {
-        issues.push(`Low Oxygen Saturation (SpO₂: ${spo2}%)`);
-        if (state !== 'EMERGENCY') state = 'WARNING';
-      }
-    }
-
-    // Check Temperature
-    if (temperature != null) {
-      if (temperature >= th.tempHighCritical) {
-        issues.push(`Critical Hyperpyrexia (${temperature.toFixed(1)} °C)`);
-        state = 'EMERGENCY';
-      } else if (temperature <= th.tempLowCritical) {
-        issues.push(`Severe Hypothermia (${temperature.toFixed(1)} °C)`);
-        state = 'EMERGENCY';
-      } else if (temperature >= th.tempHighWarning || temperature <= th.tempLowWarning) {
-        issues.push(`Elevated Body Temperature (${temperature.toFixed(1)} °C)`);
-        if (state !== 'EMERGENCY') state = 'WARNING';
-      }
-    }
-
-    // Coincidence check: If fall occurred alongside critical vitals, immediate priority escalation
-    const isCoincidentEmergency = fallDetected && (issues.length > 1);
 
     return {
       state,
-      reason: issues.join('; ') || 'Nominal readings',
-      eventType: fallDetected ? 'FALL_EVENT' : (state === 'EMERGENCY' ? 'CRITICAL_VITALS' : 'NORMAL_MONITOR'),
-      escalateImmediately: isCoincidentEmergency
+      zone: zoneEval.overallZone,
+      zoneLabel: zoneEval.zoneLabel,
+      reason: issues.join('; ') || 'Nominal readings within acceptable limits',
+      eventType: state === 'EMERGENCY' ? 'CRITICAL_VITALS' : (state === 'WARNING' ? 'WARNING_VITALS' : 'NORMAL_MONITOR'),
+      escalateImmediately: zoneEval.isEmergency,
+      triggers: zoneEval.triggers,
+      requiresSms: zoneEval.requiresSms
     };
   }
 
   /**
-   * Process and log emergency event with duplicate suppression
+   * Process and log emergency or warning event with duplicate suppression
    */
   async triggerEmergencyWorkflow(patientId, eventPayload) {
     const now = Date.now();
@@ -136,12 +107,60 @@ export class EmergencyDetector {
     const recordedEvent = await dbService.recordEmergency(patientId, eventPayload);
 
     // Trigger visual toast
-    showToast(`🚨 EMERGENCY TRIGGERED: ${eventPayload.reason}`, 'error', 8000);
+    if (eventPayload.state === 'EMERGENCY' || eventPayload.zone === 'RED') {
+      showToast(`🚨 RED ZONE EMERGENCY: ${eventPayload.reason}`, 'error', 8000);
+    } else if (eventPayload.state === 'WARNING' || eventPayload.zone === 'YELLOW') {
+      showToast(`⚠️ YELLOW ZONE WARNING: ${eventPayload.reason}`, 'warning', 6000);
+    }
 
-    // Trigger serverless caregiver email notification
+    // Trigger serverless caregiver SMS & Email notifications
+    this.dispatchServerlessSms(patientId, recordedEvent, eventPayload.zone || (eventPayload.state === 'EMERGENCY' ? 'RED' : 'YELLOW'), eventPayload.triggers || []);
     this.dispatchServerlessEmail(patientId, recordedEvent);
 
     return recordedEvent;
+  }
+
+  async dispatchServerlessSms(patientId, event, zone = 'YELLOW', triggers = []) {
+    try {
+      const response = await fetch('/api/alerts/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          patientId,
+          patientName: event.patientName || 'Jane Doe',
+          zone,
+          triggers,
+          vitals: event.vitalsAtEvent || {},
+          location: {
+            latitude: event.latitude,
+            longitude: event.longitude,
+            source: event.locationSource
+          },
+          patientPhone: localStorage.getItem('alphasquared_patient_phone') || null,
+          contacts: [
+            {
+              name: localStorage.getItem('alphasquared_primary_caregiver_name') || 'Dr. Ramesh Sharma',
+              phone: localStorage.getItem('alphasquared_primary_caregiver_phone') || '+91 98765 43210',
+              role: 'PRIMARY_CAREGIVER'
+            },
+            {
+              name: localStorage.getItem('alphasquared_sec_contact_name') || 'Amit Doe',
+              phone: localStorage.getItem('alphasquared_sec_contact_phone') || '+91 91234 56789',
+              role: 'SECONDARY_KIN'
+            }
+          ]
+        })
+      });
+
+      const data = await response.json().catch(() => ({}));
+      if (data.success) {
+        console.log('[SMS DISPATCH REPORT]', data);
+      }
+      return data;
+    } catch (err) {
+      console.warn('[SMS DISPATCH WARN]', err.message);
+      return null;
+    }
   }
 
   async dispatchServerlessEmail(patientId, event) {
@@ -168,11 +187,9 @@ export class EmergencyDetector {
         console.warn('[ALPHA SQUARED Alerts API] Serverless notification response:', response.status);
       }
     } catch {
-      // In local static mode without Vercel running, this is expected
       console.log('[ALPHA SQUARED Alerts] Local mode: Email dispatch endpoint queued.');
     }
   }
 }
 
 export const emergencyDetector = new EmergencyDetector();
-

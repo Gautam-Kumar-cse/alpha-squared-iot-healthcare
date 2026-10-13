@@ -1,12 +1,32 @@
 /**
  * ALPHA SQUARED - Protected Hardware Device Connection Endpoint
  * Validates hardware credentials, discovers supported telemetry capabilities,
- * and initializes secure backend session.
+ * implements SSRF validation, and initializes secure backend session.
  * 
  * NEVER returns private API keys to the frontend client.
  */
 
 import deviceStore from './device-store.js';
+
+export function isSafeUrl(urlString) {
+  try {
+    const parsed = new URL(urlString);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return { safe: false, reason: 'Invalid protocol. Only HTTP and HTTPS are permitted.' };
+    }
+    const hostname = parsed.hostname.toLowerCase();
+    // Reject cloud metadata IP and link-local ranges
+    if (hostname === '169.254.169.254' || hostname.startsWith('169.254.')) {
+      return { safe: false, reason: 'Access to cloud instance metadata service is strictly prohibited (SSRF Protection).' };
+    }
+    if (hostname.endsWith('.internal') || hostname === 'metadata.google.internal') {
+      return { safe: false, reason: 'Access to internal cloud metadata domain is prohibited (SSRF Protection).' };
+    }
+    return { safe: true, parsed };
+  } catch {
+    return { safe: false, reason: 'Malformed or invalid URL string.' };
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -31,6 +51,16 @@ export default async function handler(req, res) {
 
     // Verify if external hardware cloud API is configured
     if (effectiveBaseUrl && effectiveApiKey) {
+      // 1. SSRF Safety Check
+      const urlCheck = isSafeUrl(effectiveBaseUrl);
+      if (!urlCheck.safe) {
+        return res.status(400).json({
+          success: false,
+          error: `Insecure Hardware API URL rejected: ${urlCheck.reason}`,
+          hint: 'Provide a valid external HTTPS endpoint for your official medical hardware gateway.'
+        });
+      }
+
       try {
         // Attempt ping / status check against the official device API endpoint
         const targetUrl = `${effectiveBaseUrl.replace(/\/+$/, '')}/devices/${encodeURIComponent(cleanDeviceId)}/status`;

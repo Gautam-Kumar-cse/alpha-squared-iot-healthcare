@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
   initDemoControls();
   initSaveAction();
+  initTestSmsAction();
 
   if (window.lucide && typeof window.lucide.createIcons === 'function') {
     window.lucide.createIcons();
@@ -33,6 +34,12 @@ function loadSettings() {
 
   // Load Contacts
   try {
+    const savedPatientPhone = localStorage.getItem('alphasquared_patient_phone');
+    const patientPhoneInput = document.getElementById('contact-patient-phone');
+    if (patientPhoneInput && savedPatientPhone) {
+      patientPhoneInput.value = savedPatientPhone;
+    }
+
     const contacts = JSON.parse(localStorage.getItem('alphasquared_contacts') || '{}');
     if (contacts.primary) {
       if (contacts.primary.name) document.getElementById('contact-primary-name').value = contacts.primary.name;
@@ -45,6 +52,25 @@ function loadSettings() {
       if (contacts.secondary.email) document.getElementById('contact-sec-email').value = contacts.secondary.email;
     }
   } catch {}
+
+  // Load SMS Alert Settings
+  const yellowToggle = document.getElementById('toggle-sms-yellow');
+  const redToggle = document.getElementById('toggle-sms-red');
+  const smsProviderSelect = document.getElementById('cfg-sms-provider');
+  const smsCooldownSelect = document.getElementById('cfg-sms-cooldown');
+  const smsSenderInput = document.getElementById('cfg-sms-sender');
+
+  if (yellowToggle) yellowToggle.checked = localStorage.getItem('alphasquared_sms_yellow') !== 'false';
+  if (redToggle) redToggle.checked = localStorage.getItem('alphasquared_sms_red') !== 'false';
+  if (smsProviderSelect && localStorage.getItem('alphasquared_sms_provider')) {
+    smsProviderSelect.value = localStorage.getItem('alphasquared_sms_provider');
+  }
+  if (smsCooldownSelect && localStorage.getItem('alphasquared_sms_cooldown')) {
+    smsCooldownSelect.value = localStorage.getItem('alphasquared_sms_cooldown');
+  }
+  if (smsSenderInput && localStorage.getItem('alphasquared_sms_sender')) {
+    smsSenderInput.value = localStorage.getItem('alphasquared_sms_sender');
+  }
 
   // Load Firebase Config
   const fb = getFirebaseConfig();
@@ -117,7 +143,12 @@ function initSaveAction() {
     };
     emergencyDetector.saveThresholds(newTh);
 
-    // 2. Save Contacts
+    // 2. Save Contacts & Patient Phone
+    const patientPhone = document.getElementById('contact-patient-phone')?.value.trim() || '';
+    if (patientPhone) {
+      localStorage.setItem('alphasquared_patient_phone', patientPhone);
+    }
+
     const contacts = {
       primary: {
         name: document.getElementById('contact-primary-name').value.trim(),
@@ -131,8 +162,29 @@ function initSaveAction() {
       }
     };
     localStorage.setItem('alphasquared_contacts', JSON.stringify(contacts));
+    if (contacts.primary.phone) {
+      localStorage.setItem('alphasquared_primary_caregiver_phone', contacts.primary.phone);
+      localStorage.setItem('alphasquared_primary_caregiver_name', contacts.primary.name);
+    }
+    if (contacts.secondary.phone) {
+      localStorage.setItem('alphasquared_sec_contact_phone', contacts.secondary.phone);
+      localStorage.setItem('alphasquared_sec_contact_name', contacts.secondary.name);
+    }
 
-    // 3. Save Firebase if filled
+    // 3. Save SMS Alert Policies & Gateway Settings
+    const yellowToggle = document.getElementById('toggle-sms-yellow');
+    const redToggle = document.getElementById('toggle-sms-red');
+    const smsProvider = document.getElementById('cfg-sms-provider')?.value;
+    const smsCooldown = document.getElementById('cfg-sms-cooldown')?.value;
+    const smsSender = document.getElementById('cfg-sms-sender')?.value.trim();
+
+    if (yellowToggle) localStorage.setItem('alphasquared_sms_yellow', String(yellowToggle.checked));
+    if (redToggle) localStorage.setItem('alphasquared_sms_red', String(redToggle.checked));
+    if (smsProvider) localStorage.setItem('alphasquared_sms_provider', smsProvider);
+    if (smsCooldown) localStorage.setItem('alphasquared_sms_cooldown', smsCooldown);
+    if (smsSender) localStorage.setItem('alphasquared_sms_sender', smsSender);
+
+    // 4. Save Firebase if filled
     const dbUrl = document.getElementById('cfg-fb-dburl').value.trim();
     const apiKey = document.getElementById('cfg-fb-apikey').value.trim();
     const projId = document.getElementById('cfg-fb-projid').value.trim();
@@ -147,7 +199,7 @@ function initSaveAction() {
       saveCustomFirebaseConfig(customFb);
     }
 
-    // 4. Save Hardware Device Settings
+    // 5. Save Hardware Device Settings
     const hwDevId = document.getElementById('cfg-hw-device-id')?.value.trim();
     const hwProv = document.getElementById('cfg-hw-provider')?.value;
     const hwUrl = document.getElementById('cfg-hw-api-url')?.value.trim();
@@ -158,7 +210,7 @@ function initSaveAction() {
       localStorage.setItem('alphasquared_hw_is_connected', 'true');
     }
 
-    showToast('All settings and clinical thresholds saved successfully!', 'success');
+    showToast('All settings, SMS policies, and clinical thresholds saved successfully!', 'success');
   });
 
   resetFbBtn.addEventListener('click', () => {
@@ -167,6 +219,83 @@ function initSaveAction() {
     document.getElementById('cfg-fb-apikey').value = '';
     document.getElementById('cfg-fb-projid').value = DEFAULT_FIREBASE_CONFIG.projectId;
     showToast('Firebase settings restored to default prototype template.', 'info');
+  });
+}
+
+function initTestSmsAction() {
+  const testBtn = document.getElementById('btn-send-test-sms');
+  const feedbackBox = document.getElementById('test-sms-feedback');
+  if (!testBtn) return;
+
+  testBtn.addEventListener('click', async () => {
+    const patientPhone = document.getElementById('contact-patient-phone')?.value.trim() || '+91 99887 76655';
+    const caregiverPhone = document.getElementById('contact-primary-phone')?.value.trim() || '+91 98765 43210';
+    const caregiverName = document.getElementById('contact-primary-name')?.value.trim() || 'Dr. Ramesh Sharma';
+    const provider = document.getElementById('cfg-sms-provider')?.value || 'SIMULATED';
+
+    try {
+      testBtn.disabled = true;
+      testBtn.innerHTML = '<span class="spin-animation" style="display:inline-block;">⏳</span> Transmitting Test SMS...';
+      if (feedbackBox) {
+        feedbackBox.style.display = 'block';
+        feedbackBox.style.background = 'rgba(0, 240, 255, 0.08)';
+        feedbackBox.style.border = '1px solid var(--border-cyan)';
+        feedbackBox.style.color = '#38bdf8';
+        feedbackBox.textContent = 'Connecting to SMS gateway & dispatching test frame...';
+      }
+
+      const response = await fetch('/api/alerts/send-sms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isTest: true,
+          patientId: 'PATIENT-001',
+          patientName: 'Jane Doe',
+          zone: 'YELLOW',
+          patientPhone,
+          contacts: [
+            { name: caregiverName, phone: caregiverPhone, role: 'PRIMARY_CAREGIVER' }
+          ]
+        })
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (response.ok && result.success) {
+        showToast('Test SMS transmission completed successfully!', 'success');
+        if (feedbackBox) {
+          feedbackBox.style.background = 'rgba(16, 185, 129, 0.15)';
+          feedbackBox.style.border = '1px solid #10b981';
+          feedbackBox.style.color = '#86efac';
+          feedbackBox.innerHTML = `
+            <strong>✅ Test SMS Dispatched Successfully!</strong><br>
+            <strong>Provider:</strong> ${result.provider} (${result.isLiveGateway ? 'Live Gateway Active' : 'Simulation Audit Mode'})<br>
+            <strong>Recipient:</strong> ${caregiverName} (${caregiverPhone})<br>
+            <strong>Status Notice:</strong> ${result.notice}<br>
+            <div style="margin-top:4px; font-size:0.75rem; color:#cbd5e1; background:rgba(0,0,0,0.3); padding:4px 8px; border-radius:4px;">
+              ${result.smsBody}
+            </div>
+          `;
+        }
+      } else {
+        throw new Error(result.error || `Server responded with status ${response.status}`);
+      }
+
+    } catch (err) {
+      showToast(`Test SMS Failed: ${err.message}`, 'error');
+      if (feedbackBox) {
+        feedbackBox.style.background = 'rgba(239, 68, 68, 0.15)';
+        feedbackBox.style.border = '1px solid #ef4444';
+        feedbackBox.style.color = '#fca5a5';
+        feedbackBox.textContent = `❌ Test SMS Dispatch Error: ${err.message}`;
+      }
+    } finally {
+      testBtn.disabled = false;
+      testBtn.innerHTML = '<i data-lucide="send" style="width:14px;height:14px;"></i> <span>Send Test SMS Now</span>';
+      if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+      }
+    }
   });
 }
 

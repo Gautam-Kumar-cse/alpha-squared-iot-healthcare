@@ -7,11 +7,13 @@ import { initParticleBackground } from '../components/particle-background.js';
 import { renderNavbar } from '../components/navbar.js';
 import { dbService } from '../services/db-service.js';
 import { hardwareApiService } from '../services/hardware-api-service.js';
+import { zoneEngine, CLINICAL_ZONES } from '../services/zone-engine.js';
 
 let bpChart, hrChart, spo2Chart, tempChart;
 const patientId = 'PATIENT-001';
 let allReadings = [];
 let currentFilter = 'daily';
+let currentZoneFilter = 'ALL';
 
 document.addEventListener('DOMContentLoaded', async () => {
   renderNavbar('history');
@@ -28,13 +30,23 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 function initFilterButtons() {
-  const buttons = document.querySelectorAll('.time-filter-btn');
-  buttons.forEach(btn => {
+  const timeButtons = document.querySelectorAll('.time-filter-btn');
+  timeButtons.forEach(btn => {
     btn.addEventListener('click', async () => {
-      buttons.forEach(b => b.classList.remove('active'));
+      timeButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       currentFilter = btn.dataset.range;
       await loadHistoryData(currentFilter);
+    });
+  });
+
+  const zoneButtons = document.querySelectorAll('.zone-filter-btn');
+  zoneButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      zoneButtons.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentZoneFilter = btn.dataset.zone || 'ALL';
+      applyFilterAndRender(allReadings, currentFilter);
     });
   });
 }
@@ -77,7 +89,15 @@ function applyFilterAndRender(dataset, range) {
 
   if (filtered.length === 0) filtered = dataset.slice(-24);
 
-  updateCharts(filtered);
+  // Apply Zone Filter if selected
+  if (currentZoneFilter && currentZoneFilter !== 'ALL') {
+    filtered = filtered.filter(r => {
+      const z = r.zone || zoneEngine.evaluate(r).overallZone;
+      return z === currentZoneFilter;
+    });
+  }
+
+  updateCharts(filtered.length > 0 ? filtered : dataset.slice(-20));
   renderTable(filtered);
 }
 
@@ -265,7 +285,7 @@ function renderTable(data) {
   if (!tbody) return;
 
   if (data.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-subtle); padding:var(--space-lg);">No records match selected filter.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-subtle); padding:var(--space-lg);">No records match selected timeline and zone filters.</td></tr>`;
     return;
   }
 
@@ -273,12 +293,14 @@ function renderTable(data) {
 
   tbody.innerHTML = sorted.map(r => {
     const timeStr = new Date(r.timestamp).toLocaleString();
-    const state = r.emergencyState || 'NORMAL';
+    const zoneEval = zoneEngine.evaluate(r);
+    const zone = r.zone || zoneEval.overallZone || 'GREEN';
+    const state = r.emergencyState || (zone === 'RED' ? 'EMERGENCY' : (zone === 'YELLOW' ? 'WARNING' : 'NORMAL'));
     const badgeClass = state === 'EMERGENCY' ? 'emergency' : (state === 'WARNING' ? 'warning' : 'normal');
 
     const bpStr = r.bloodPressure?.systolic 
       ? `${r.bloodPressure.systolic}/${r.bloodPressure.diastolic} mmHg`
-      : '120/80 mmHg (Baseline)';
+      : '120/80 mmHg';
 
     const hrVal = r.heartRate?.value ?? r.heartRate ?? '--';
     const spo2Val = r.spo2?.value ?? r.spo2 ?? '--';
@@ -291,6 +313,7 @@ function renderTable(data) {
         <td style="font-weight:700; color:var(--vital-hr);">${hrVal} BPM</td>
         <td style="font-weight:700; color:var(--vital-spo2);">${spo2Val}%</td>
         <td style="font-weight:700; color:var(--vital-temp);">${typeof tempVal === 'number' ? tempVal.toFixed(1) : tempVal}°C</td>
+        <td><span class="status-badge zone-${zone.toLowerCase()}">${zone} ZONE</span></td>
         <td><span class="status-badge ${badgeClass}">${state}</span></td>
       </tr>
     `;
