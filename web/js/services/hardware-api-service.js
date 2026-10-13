@@ -204,6 +204,88 @@ class HardwareApiService {
   }
 
   /**
+   * Check backend health and persistent database status
+   * GET /api/health
+   */
+  async fetchHealth() {
+    try {
+      const response = await fetch('/api/health', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      return await response.json();
+    } catch (err) {
+      return { success: false, error: err.message, status: 'DOWN' };
+    }
+  }
+
+  /**
+   * Fetch latest Heart Rate and Body Temperature readings
+   * GET /api/readings/latest
+   */
+  async fetchLatestReadings(deviceId = null, patientId = null) {
+    const devId = deviceId || this.getConnectedDeviceId();
+    const query = new URLSearchParams();
+    if (devId) query.set('deviceId', devId);
+    if (patientId) query.set('patientId', patientId);
+
+    const queryString = query.toString() ? `?${query.toString()}` : '';
+    try {
+      const response = await fetch(`/api/readings/latest${queryString}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      return await response.json();
+    } catch (err) {
+      return { success: false, error: err.message, status: 'NETWORK_ERROR' };
+    }
+  }
+
+  /**
+   * Fetch historical readings with range and date filtering
+   * GET /api/readings/history
+   */
+  async fetchReadingsHistory({ range = 'all', startDate = null, endDate = null, limit = 100, deviceId = null, patientId = null, source = 'ALL' } = {}) {
+    const devId = deviceId || this.getConnectedDeviceId();
+    const query = new URLSearchParams();
+    if (range) query.set('range', range);
+    if (startDate) query.set('startDate', startDate);
+    if (endDate) query.set('endDate', endDate);
+    if (limit) query.set('limit', String(limit));
+    if (devId) query.set('deviceId', devId);
+    if (patientId) query.set('patientId', patientId);
+    if (source && source !== 'ALL') query.set('source', source);
+
+    try {
+      const response = await fetch(`/api/readings/history?${query.toString()}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      return await response.json();
+    } catch (err) {
+      return { success: false, error: err.message, readings: [] };
+    }
+  }
+
+  /**
+   * Fetch device connection and hardware status
+   * GET /api/device/status
+   */
+  async fetchDeviceStatus(deviceId = null) {
+    const devId = deviceId || this.getConnectedDeviceId();
+    const query = devId ? `?deviceId=${encodeURIComponent(devId)}` : '';
+    try {
+      const response = await fetch(`/api/device/status${query}`, {
+        method: 'GET',
+        headers: { 'Accept': 'application/json' }
+      });
+      return await response.json();
+    } catch (err) {
+      return { success: false, error: err.message, status: 'OFFLINE', connected: false };
+    }
+  }
+
+  /**
    * Start periodic auto-refresh polling
    */
   startAutoPolling(intervalSeconds = 15, onUpdateCallback) {

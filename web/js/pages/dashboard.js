@@ -303,8 +303,20 @@ async function queryDeviceTelemetryManual() {
 
   try {
     const result = await hardwareApiService.fetchLiveTelemetry();
-    onHardwareTelemetryUpdate(result);
-    showToast('Hardware telemetry synchronized.', 'info');
+    if (result && result.connected && result.telemetry) {
+      onHardwareTelemetryUpdate(result);
+      showToast('Hardware telemetry synchronized.', 'info');
+    } else {
+      // Check latest readings API for recent data
+      const latest = await hardwareApiService.fetchLatestReadings();
+      if (latest && latest.success && latest.status === 'OK' && (latest.heartRate || latest.temperature)) {
+        renderTelemetryData(latest);
+        showToast('Latest health readings synchronized from database.', 'info');
+      } else {
+        onHardwareTelemetryUpdate(result);
+        showToast('Hardware telemetry synchronized.', 'info');
+      }
+    }
   } catch (err) {
     showToast(`Failed to sync with device: ${err.message}`, 'error');
   } finally {
@@ -320,14 +332,21 @@ function onHardwareTelemetryUpdate(response) {
   if (response.connected && response.telemetry) {
     renderTelemetryData(response.telemetry);
   } else if (response.status === 'DEVICE_NOT_CONNECTED') {
-    // Clean indicator that hardware has not transmitted data yet
-    const pill = document.getElementById('hw-status-pill');
-    const label = document.getElementById('hw-status-label');
-    if (pill) pill.className = 'status-pill busy';
-    if (label) label.textContent = 'AWAITING HARDWARE TRANSMISSION';
+    // Attempt fallback to latest stored readings
+    hardwareApiService.fetchLatestReadings().then(latest => {
+      if (latest && latest.success && latest.status === 'OK' && (latest.heartRate || latest.temperature)) {
+        renderTelemetryData(latest);
+      } else {
+        // Clean indicator that hardware has not transmitted data yet
+        const pill = document.getElementById('hw-status-pill');
+        const label = document.getElementById('hw-status-label');
+        if (pill) pill.className = 'status-pill busy';
+        if (label) label.textContent = 'AWAITING HARDWARE TRANSMISSION';
 
-    const lastSyncEl = document.getElementById('last-update-time');
-    if (lastSyncEl) lastSyncEl.textContent = 'Awaiting Device Stream';
+        const lastSyncEl = document.getElementById('last-update-time');
+        if (lastSyncEl) lastSyncEl.textContent = 'Awaiting Device Stream';
+      }
+    }).catch(() => {});
   } else if (response.error) {
     const pill = document.getElementById('hw-status-pill');
     const label = document.getElementById('hw-status-label');

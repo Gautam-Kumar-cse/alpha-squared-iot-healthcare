@@ -25,3 +25,5 @@ hardware/esp32/build/
 .firebase/
 firebase-debug.log*
 
+
+data/

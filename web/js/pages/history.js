@@ -52,7 +52,21 @@ function initFilterButtons() {
 }
 
 async function loadHistoryData(range) {
-  // If hardware device is connected, check its API history first
+  // 1. Try querying stored readings from GET /api/readings/history
+  try {
+    const apiRes = await hardwareApiService.fetchReadingsHistory({ range, patientId });
+    if (apiRes && apiRes.success && Array.isArray(apiRes.readings) && apiRes.readings.length > 0) {
+      allReadings = apiRes.readings;
+      applyFilterAndRender(allReadings, range);
+      const srcBadge = document.getElementById('history-dataset-source');
+      if (srcBadge) srcBadge.textContent = 'API READINGS STORE';
+      return;
+    }
+  } catch {
+    // Continue to connected device / local fallback
+  }
+
+  // 2. If hardware device is connected, check device API history
   if (hardwareApiService.isConnected()) {
     try {
       const hwHistory = await hardwareApiService.fetchHistory(range);
@@ -68,7 +82,7 @@ async function loadHistoryData(range) {
     }
   }
 
-  // Fallback to RTDB / local historical records
+  // 3. Fallback to RTDB / local historical records
   allReadings = await dbService.getHistory(patientId);
   applyFilterAndRender(allReadings, range);
   const srcBadge = document.getElementById('history-dataset-source');

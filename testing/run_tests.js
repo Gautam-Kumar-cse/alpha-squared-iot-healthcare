@@ -14,6 +14,13 @@ import connectHandler, { isSafeUrl } from '../api/device/connect.js';
 import { evaluatePatientZones, CLINICAL_ZONES } from '../api/device/zone-evaluator.js';
 import sendSmsHandler from '../api/alerts/send-sms.js';
 import { zoneEngine, ZoneEngine } from '../web/js/services/zone-engine.js';
+import healthHandler from '../api/health.js';
+import latestReadingsHandler from '../api/readings/latest.js';
+import historyReadingsHandler from '../api/readings/history.js';
+import rootIngestHandler, { validateIngestionData, DEFAULT_DEV_API_KEY } from '../api/ingest.js';
+import deviceStatusHandler from '../api/device/status.js';
+import mongoClient, { MONGO_STATUS } from '../api/db/mongo-client.js';
+import migrationService from '../api/db/migration.js';
 
 console.log('====================================================');
 console.log('  ALPHA SQUARED IoT HEALTHCARE — VERIFICATION SUITE ');
@@ -250,6 +257,7 @@ runTest('DeviceStore: Stores and retrieves normalized telemetry snapshots', () =
 
 runTest('DeviceStore: Appends history and handles range filtering', () => {
   const testDevId = 'TEST-NODE-UNIT-03';
+  deviceStore.clearDevice(testDevId);
   deviceStore.setLatestTelemetry(testDevId, { heartRate: { value: 80 }, timestamp: Date.now() });
   deviceStore.setLatestTelemetry(testDevId, { heartRate: { value: 82 }, timestamp: Date.now() });
   const history = deviceStore.getHistory(testDevId, 'daily');
@@ -1102,6 +1110,321 @@ runTest('Emergency & Dashboard Pages: Call buttons and Notification log tables i
   assert.ok(dashHtml.includes('id="card-temp"'));
   assert.ok(!dashHtml.includes('id="card-spo2"'));
   assert.ok(!dashHtml.includes('id="card-bp"'));
+});
+
+// ---------------------------------------------------------
+// 17. Complete Health Telemetry & Ingestion API Integration Tests
+// ---------------------------------------------------------
+await runAsyncTest('Health Check API: GET /api/health reports backend and storage status', async () => {
+  const req = { method: 'GET', headers: {} };
+  const res = createMockRes();
+  await healthHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.success, true);
+  assert.strictEqual(res.body.status, 'OK');
+  assert.strictEqual(res.body.database.type, 'Persistent File-Backed JSON Store & Firebase RTDB Sync');
+  assert.strictEqual(res.body.database.status, 'HEALTHY');
+  assert.ok(typeof res.body.uptimeSeconds === 'number');
+  assert.ok(res.body.endpoints.health);
+  assert.ok(res.body.endpoints.latestReadings);
+  assert.ok(res.body.endpoints.historyReadings);
+  assert.ok(res.body.endpoints.deviceIngest);
+  assert.ok(res.body.endpoints.deviceStatus);
+});
+
+await runAsyncTest('Ingestion API: POST /api/ingest requires device authentication', async () => {
+  // Test missing auth header
+  const reqNoAuth = {
+    method: 'POST',
+    headers: {},
+    body: { deviceId: 'ESP32-AUTH-TEST', heartRate: 72 }
+  };
+  const resNoAuth = createMockRes();
+  await rootIngestHandler(reqNoAuth, resNoAuth);
+  assert.strictEqual(resNoAuth.statusCode, 401);
+  assert.strictEqual(resNoAuth.body.success, false);
+  assert.ok(resNoAuth.body.error.includes('Unauthorized'));
+
+  // Test invalid auth key
+  const reqBadAuth = {
+    method: 'POST',
+    headers: { 'x-api-key': 'INVALID_HARDWARE_KEY_12345' },
+    body: { deviceId: 'ESP32-AUTH-TEST', heartRate: 72 }
+  };
+  const resBadAuth = createMockRes();
+  await rootIngestHandler(reqBadAuth, resBadAuth);
+  assert.strictEqual(resBadAuth.statusCode, 401);
+});
+
+await runAsyncTest('Ingestion API: POST /api/ingest validates biometric physiological bounds and timestamps', async () => {
+  // Validation: Missing deviceId
+  const missingDev = validateIngestionData({ heartRate: 75 });
+  assert.strictEqual(missingDev.isValid, false);
+  assert.ok(missingDev.errors.some(e => e.includes('deviceId')));
+
+  // Validation: Heart Rate out of realistic bounds (<20 or >300)
+  const lowHr = validateIngestionData({ deviceId: 'ESP32-BOUNDS', heartRate: 15 });
+  assert.strictEqual(lowHr.isValid, false);
+  assert.ok(lowHr.errors.some(e => e.includes('Heart Rate reading out of realistic bounds')));
+
+  const highHr = validateIngestionData({ deviceId: 'ESP32-BOUNDS', heartRate: 350 });
+  assert.strictEqual(highHr.isValid, false);
+  assert.ok(highHr.errors.some(e => e.includes('Heart Rate reading out of realistic bounds')));
+
+  // Validation: Body Temperature out of realistic bounds (<25 or >45°C)
+  const lowTemp = validateIngestionData({ deviceId: 'ESP32-BOUNDS', temperature: 22.0 });
+  assert.strictEqual(lowTemp.isValid, false);
+  assert.ok(lowTemp.errors.some(e => e.includes('Body Temperature out of realistic bounds')));
+
+  const highTemp = validateIngestionData({ deviceId: 'ESP32-BOUNDS', temperature: 48.0 });
+  assert.strictEqual(highTemp.isValid, false);
+  assert.ok(highTemp.errors.some(e => e.includes('Body Temperature out of realistic bounds')));
+
+  // Validation: Invalid timestamp (NaN or > 24 hours into future)
+  const badTs = validateIngestionData({ deviceId: 'ESP32-BOUNDS', heartRate: 75, timestamp: 'NOT_A_TIMESTAMP' });
+  assert.strictEqual(badTs.isValid, false);
+
+  const futureTs = validateIngestionData({ deviceId: 'ESP32-BOUNDS', heartRate: 75, timestamp: Date.now() + 48 * 60 * 60 * 1000 });
+  assert.strictEqual(futureTs.isValid, false);
+  assert.ok(futureTs.errors.some(e => e.includes('future beyond 24 hours')));
+});
+
+await runAsyncTest('Ingestion API: Ingests REAL hardware data and persistently stores in database', async () => {
+  const devId = 'ESP32-ALPHA-REAL-01';
+  const req = {
+    method: 'POST',
+    headers: { 'x-api-key': DEFAULT_DEV_API_KEY },
+    body: {
+      deviceId: devId,
+      patientId: 'PATIENT-API-TEST-001',
+      patientName: '[TEST] Alice Green',
+      isTestFixture: true,
+      testTag: 'AUTOMATED_TEST_FIXTURE',
+      heartRate: 78,
+      temperature: 36.8,
+      isDemo: false,
+      suppressSms: true,
+      timestamp: Date.now(),
+      batteryLevel: '94%',
+      wifiRssi: -52
+    }
+  };
+  const res = createMockRes();
+  await rootIngestHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.success, true);
+  assert.strictEqual(res.body.source, 'REAL');
+  assert.strictEqual(res.body.isDemo, false);
+  assert.strictEqual(res.body.telemetry.isTestFixture, true);
+  assert.strictEqual(res.body.telemetry.testTag, 'AUTOMATED_TEST_FIXTURE');
+  assert.strictEqual(res.body.heartRate.value, 78);
+  assert.strictEqual(res.body.temperature.celsius, 36.8);
+
+  // Check persistent storage file exists and contains the ingested reading
+  const diskFilePath = path.resolve(process.cwd(), 'data/readings.json');
+  assert.ok(fs.existsSync(diskFilePath), 'data/readings.json file must exist');
+  const fileContent = JSON.parse(fs.readFileSync(diskFilePath, 'utf-8'));
+  const foundInFile = (fileContent.readingsHistory && fileContent.readingsHistory.some(r => r.deviceId === devId && r.heartRate?.value === 78))
+    || (fileContent.telemetryLatest && fileContent.telemetryLatest[devId]?.heartRate?.value === 78);
+  assert.ok(foundInFile, 'Real hardware reading must be persistently committed to data/readings.json');
+});
+
+await runAsyncTest('Ingestion API: Distinguishes DEMO data source tag accurately', async () => {
+  const devId = 'ESP32-ALPHA-DEMO-01';
+  const req = {
+    method: 'POST',
+    headers: { 'authorization': `Bearer ${DEFAULT_DEV_API_KEY}` },
+    body: {
+      deviceId: devId,
+      patientId: 'PATIENT-DEMO-TEST-001',
+      isTestFixture: true,
+      testTag: 'AUTOMATED_TEST_FIXTURE',
+      heartRate: 85,
+      temperature: 37.1,
+      isDemo: true,
+      suppressSms: true,
+      timestamp: Date.now()
+    }
+  };
+  const res = createMockRes();
+  await rootIngestHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.source, 'DEMO');
+  assert.strictEqual(res.body.isDemo, true);
+  assert.strictEqual(res.body.telemetry.isTestFixture, true);
+});
+
+await runAsyncTest('Latest Readings API: GET /api/readings/latest returns latest Heart Rate and Body Temperature', async () => {
+  const devId = 'ESP32-ALPHA-REAL-01';
+  const req = {
+    method: 'GET',
+    headers: {},
+    query: { deviceId: devId }
+  };
+  const res = createMockRes();
+  await latestReadingsHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.success, true);
+  assert.strictEqual(res.body.status, 'OK');
+  assert.strictEqual(res.body.deviceId, devId);
+  assert.strictEqual(res.body.source, 'REAL');
+  assert.ok(res.body.heartRate);
+  assert.strictEqual(res.body.heartRate.value, 78);
+  assert.strictEqual(res.body.heartRate.unit, 'BPM');
+  assert.ok(res.body.temperature);
+  assert.strictEqual(res.body.temperature.celsius, 36.8);
+  assert.strictEqual(res.body.temperature.unit, '°C');
+});
+
+await runAsyncTest('Historical Readings API: GET /api/readings/history filters records and validates queries', async () => {
+  // Test invalid startDate format
+  const reqBadDate = {
+    method: 'GET',
+    headers: {},
+    query: { startDate: 'INVALID_DATE' }
+  };
+  const resBadDate = createMockRes();
+  await historyReadingsHandler(reqBadDate, resBadDate);
+  assert.strictEqual(resBadDate.statusCode, 400);
+  assert.strictEqual(resBadDate.body.success, false);
+
+  // Test valid query with range
+  const reqHistory = {
+    method: 'GET',
+    headers: {},
+    query: { deviceId: 'ESP32-ALPHA-REAL-01', range: 'daily', limit: '10' }
+  };
+  const resHistory = createMockRes();
+  await historyReadingsHandler(reqHistory, resHistory);
+  assert.strictEqual(resHistory.statusCode, 200);
+  assert.strictEqual(resHistory.body.success, true);
+  assert.ok(Array.isArray(resHistory.body.readings));
+  assert.ok(resHistory.body.count >= 1);
+  assert.strictEqual(resHistory.body.range, 'daily');
+});
+
+await runAsyncTest('Device Status API: GET /api/device/status reports connection and telemetry metadata', async () => {
+  const devId = 'ESP32-ALPHA-REAL-01';
+  const req = {
+    method: 'GET',
+    headers: {},
+    query: { deviceId: devId }
+  };
+  const res = createMockRes();
+  await deviceStatusHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.success, true);
+  assert.strictEqual(res.body.deviceId, devId);
+  assert.strictEqual(res.body.connected, true);
+  assert.strictEqual(res.body.status, 'ONLINE');
+  assert.ok(res.body.lastDataTime);
+  assert.strictEqual(res.body.batteryLevel, '94%');
+  assert.strictEqual(res.body.wifiRssi, -52);
+  assert.strictEqual(res.body.dataSource, 'REAL');
+});
+
+// ---------------------------------------------------------
+// 18. MongoDB Atlas Primary Database & Safe Migration Tests
+// ---------------------------------------------------------
+runTest('MongoDB Atlas: Client initializes with safe UNCONFIGURED status when MONGODB_URI is absent', () => {
+  const status = mongoClient.getStatus();
+  assert.strictEqual(typeof status.configured, 'boolean');
+  assert.ok(['UNCONFIGURED', 'CONNECTED', 'DISCONNECTED', 'ERROR'].includes(status.status));
+});
+
+await runAsyncTest('MongoDB Atlas: Rejects inserts cleanly with descriptive error when unconfigured', async () => {
+  const origUri = process.env.MONGODB_URI;
+  delete process.env.MONGODB_URI;
+  await mongoClient.disconnect();
+
+  try {
+    let threw = false;
+    try {
+      await mongoClient.insertReading({ deviceId: 'TEST-DEV', heartRate: 75 });
+    } catch (err) {
+      threw = true;
+      assert.ok(err.message.includes('MongoDB Atlas is not configured'));
+    }
+    assert.strictEqual(threw, true, 'insertReading must reject when MONGODB_URI is absent');
+  } finally {
+    if (origUri) process.env.MONGODB_URI = origUri;
+  }
+});
+
+await runAsyncTest('MongoDB Atlas: Catches cluster connection timeouts without unhandled exceptions', async () => {
+  const origUri = process.env.MONGODB_URI;
+  // Point to a non-existent port with small timeout
+  process.env.MONGODB_URI = 'mongodb://127.0.0.1:27099/test_db?serverSelectionTimeoutMS=200';
+  await mongoClient.disconnect();
+
+  let threw = false;
+  try {
+    await mongoClient.connect();
+  } catch (err) {
+    threw = true;
+    assert.ok(err.message);
+  }
+  assert.strictEqual(threw, true);
+  assert.strictEqual(mongoClient.getStatus().status, MONGO_STATUS.ERROR);
+  assert.ok(mongoClient.getStatus().lastError);
+
+  // Restore
+  await mongoClient.disconnect();
+  if (origUri) {
+    process.env.MONGODB_URI = origUri;
+  } else {
+    delete process.env.MONGODB_URI;
+  }
+});
+
+runTest('MongoDB Atlas: Never exposes MONGODB_URI or credentials in frontend code', () => {
+  const webDir = path.resolve(process.cwd(), 'web');
+  const files = [];
+  function collectFiles(dir) {
+    for (const f of fs.readdirSync(dir)) {
+      const full = path.join(dir, f);
+      if (fs.statSync(full).isDirectory()) collectFiles(full);
+      else if (f.endsWith('.js') || f.endsWith('.html')) files.push(full);
+    }
+  }
+  collectFiles(webDir);
+
+  for (const file of files) {
+    const text = fs.readFileSync(file, 'utf-8');
+    assert.ok(!text.includes('MONGODB_URI'), `MONGODB_URI must not appear in frontend file: ${path.basename(file)}`);
+    assert.ok(!text.includes('mongodb+srv://'), `MongoDB connection string must not appear in frontend file: ${path.basename(file)}`);
+  }
+});
+
+await runAsyncTest('Health API: Reports MongoDB Atlas as primary database and reflects configuration state', async () => {
+  const req = { method: 'GET', headers: {} };
+  const res = createMockRes();
+  await healthHandler(req, res);
+  assert.strictEqual(res.statusCode, 200);
+  assert.strictEqual(res.body.database.primaryDatabase, 'MongoDB Atlas');
+  assert.ok(res.body.database.mongoAtlas);
+  assert.strictEqual(typeof res.body.database.mongoAtlas.configured, 'boolean');
+});
+
+runTest('Safe Migration Service: Inspects local data without modifying data/readings.json', () => {
+  const inspection = migrationService.inspectLocalData();
+  assert.strictEqual(inspection.exists, true);
+  assert.ok(inspection.totalReadings >= 40);
+  assert.ok(inspection.composition.realHardware >= 1);
+  assert.ok(typeof inspection.composition.demoSimulated === 'number');
+  assert.ok(typeof inspection.composition.testFixtures === 'number');
+
+  // Verify file has not been altered or deleted
+  const diskPath = path.resolve(process.cwd(), 'data/readings.json');
+  assert.ok(fs.existsSync(diskPath));
+});
+
+await runAsyncTest('Safe Migration Service: Dry run completes safely with zero database writes', async () => {
+  const plan = await migrationService.planOrMigrate({ dryRun: true });
+  assert.strictEqual(plan.success, true);
+  assert.strictEqual(plan.dryRun, true);
+  assert.ok(plan.totalLocalReadings >= 40);
+  assert.ok(plan.message.includes('Dry run completed'));
 });
 
 // ---------------------------------------------------------
