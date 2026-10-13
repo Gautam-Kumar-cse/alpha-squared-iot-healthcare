@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About Us — ALPHA SQUARED IoT Healthcare</title>
+  <meta name="description" content="Learn about Alpha Squared IoT Healthcare: improving patient safety through IoT-based health monitoring, emergency assistance, location tracking, and health analytics.">
+
+  <!-- Design System CSS -->
+  <link rel="stylesheet" href="css/design-system.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/pages.css">
+
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+  <canvas id="bg-canvas"></canvas>
+
+  <div class="app-container">
+    <header id="navbar-mount"></header>
+
+    <main class="main-wrapper">
+      <!-- Topbar Header / About Introduction -->
+      <section class="dashboard-topbar" style="margin-bottom: var(--space-xl);">
+        <div>
+          <div class="status-badge normal" style="margin-bottom: 0.35rem;">MISSION &amp; VISION</div>
+          <h1 style="font-size: 1.85rem; font-weight: 800;">About Alpha Squared IoT Healthcare</h1>
+          <p style="font-size: 0.95rem; max-width: 850px; line-height: 1.6; margin-top: 0.4rem;">
+            Alpha Squared IoT Healthcare aims to improve patient safety through IoT-based health monitoring, emergency assistance, location tracking, and health analytics. We bridge clinical-grade wearable sensors with instant cloud intelligence to protect vulnerable individuals, post-operative patients, and lone workers.
+          </p>
+        </div>
+
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <a href="dashboard.html" class="btn btn-primary btn-sm">
+            <i data-lucide="layout-dashboard" style="width:15px;height:15px;"></i>
+            <span>Monitoring Console</span>
+          </a>
+          <a href="emergency.html" class="btn btn-secondary btn-sm">
+            <i data-lucide="alert-octagon" style="width:15px;height:15px;"></i>
+            <span>Emergency Center</span>
+          </a>
+        </div>
+      </section>
+
+      <!-- Platform Overview Glass Banner -->
+      <section class="glass-panel" style="padding: var(--space-xl); margin-bottom: var(--space-3xl); border-color: var(--border-cyan);">
+        <div style="display: flex; flex-wrap: wrap; gap: var(--space-xl); align-items: center; justify-content: space-between;">
+          <div style="flex: 1 1 480px;">
+            <div class="status-badge normal" style="margin-bottom: var(--space-sm);">INTELLIGENT HEALTHCARE ECOSYSTEM</div>
+            <h2 style="font-size: 1.45rem; font-weight: 800; color: #f8fafc; margin-bottom: var(--space-sm);">
+              Proactive Care, Autonomous Alerts, &amp; Sub-Second Telemetry
+            </h2>
+            <p style="font-size: 0.925rem; line-height: 1.6; color: var(--text-muted); margin-bottom: var(--space-md);">
+              Traditional patient care often relies on periodic manual spot-checks or delayed emergency calls. Alpha Squared reimagines emergency response by uniting physical wearable micro-controller nodes (ESP32) with real-time biometric analysis and autonomous emergency escalation. When critical vital anomalies, abrupt fall impacts, or distress signals occur, the system dispatches coordinates and alert notifications in under two seconds.
+            </p>
+            <div style="display: flex; flex-wrap: wrap; gap: 0.75rem;">
+              <div class="status-badge normal" style="color:var(--cyan-primary); background:rgba(0, 240, 255, 0.08);">
+                <i data-lucide="cpu" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-right:4px;"></i>
+                Modular Hardware Abstraction Layer
+              </div>
+              <div class="status-badge normal" style="color:#34d399; background:rgba(52, 211, 153, 0.08);">
+                <i data-lucide="radio" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-right:4px;"></i>
+                Zero Fake Data Telemetry
+              </div>
+              <div class="status-badge normal" style="color:#38bdf8; background:rgba(56, 189, 248, 0.08);">
+                <i data-lucide="map-pin" style="width:13px;height:13px;display:inline-block;vertical-align:middle;margin-right:4px;"></i>
+                Dual Hardware &amp; Browser GPS
+              </div>
+            </div>
+          </div>
+
+          <div style="flex: 1 1 280px; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md);">
+            <div class="glass-panel" style="padding: var(--space-md); text-align: center; background: rgba(6, 10, 18, 0.6);">
+              <div style="font-size: 1.8rem; font-weight: 800; color: var(--cyan-primary); font-family: var(--font-mono);">&lt;2s</div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 4px;">Alert Latency</div>
+            </div>
+            <div class="glass-panel" style="padding: var(--space-md); text-align: center; background: rgba(6, 10, 18, 0.6);">
+              <div style="font-size: 1.8rem; font-weight: 800; color: #34d399; font-family: var(--font-mono);">10+</div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 4px;">Health Metrics</div>
+            </div>
+            <div class="glass-panel" style="padding: var(--space-md); text-align: center; background: rgba(6, 10, 18, 0.6);">
+              <div style="font-size: 1.8rem; font-weight: 800; color: #f59e0b; font-family: var(--font-mono);">6-Axis</div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 4px;">IMU Fall Vector</div>
+            </div>
+            <div class="glass-panel" style="padding: var(--space-md); text-align: center; background: rgba(6, 10, 18, 0.6);">
+              <div style="font-size: 1.8rem; font-weight: 800; color: #a78bfa; font-family: var(--font-mono);">24/7</div>
+              <div style="font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-top: 4px;">Cloud Sync</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Core Capabilities Section (Preserved with Original Styling & Cards) -->
+      <section aria-labelledby="features-heading" style="margin: var(--space-3xl) 0;">
+        <div style="text-align: center; max-width: 700px; margin: 0 auto var(--space-xl);">
+          <div class="status-badge normal" style="margin-bottom: var(--space-sm);">CORE CAPABILITIES</div>
+          <h2 id="features-heading">Comprehensive Patient Safety Ecosystem</h2>
+          <p>Continuous biometrics telemetry combined with autonomous incident detection algorithms.</p>
+        </div>
+
+        <div class="features-grid">
+          <!-- 1. Real-Time Vitals Tracking -->
+          <div class="glass-panel feature-box">
+            <div class="feature-icon-badge">
+              <i data-lucide="heart" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Real-Time Vitals Tracking</h3>
+            <p>Continuous pulse rate, blood oxygen saturation (SpO2), and core body temperature monitoring with sub-second cloud synchronization.</p>
+          </div>
+
+          <!-- 2. Autonomous Fall Detection -->
+          <div class="glass-panel feature-box" style="border-color: rgba(239, 68, 68, 0.3);">
+            <div class="feature-icon-badge" style="background: rgba(239, 68, 68, 0.1); border-color: #ef4444; color: #ef4444;">
+              <i data-lucide="activity" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Autonomous Fall Detection</h3>
+            <p>Integrated 6-axis IMU algorithmic analysis identifies abrupt impact and posture change, initiating a timed escalation workflow.</p>
+          </div>
+
+          <!-- 3. Immediate Caregiver SOS -->
+          <div class="glass-panel feature-box" style="border-color: rgba(255, 0, 85, 0.3);">
+            <div class="feature-icon-badge" style="background: rgba(255, 0, 85, 0.1); border-color: #ff0055; color: #ff0055;">
+              <i data-lucide="bell" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Immediate Caregiver SOS</h3>
+            <p>Physical emergency button on the wearable hardware paired with deliberate two-step software triggers for rapid incident broadcasting.</p>
+          </div>
+
+          <!-- 4. Live Geolocation Tracking -->
+          <div class="glass-panel feature-box">
+            <div class="feature-icon-badge">
+              <i data-lucide="map-pin" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Live Geolocation Tracking</h3>
+            <p>Precision device GPS coordinate logging with seamless browser fallback and one-tap Google Maps directions for emergency responders.</p>
+          </div>
+
+          <!-- 5. Longitudinal Health Analytics -->
+          <div class="glass-panel feature-box">
+            <div class="feature-icon-badge">
+              <i data-lucide="line-chart" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Longitudinal Health Analytics</h3>
+            <p>Historical trends analysis with interactive Chart.js visualizations, configurable timeline zoom, and anomaly flags.</p>
+          </div>
+
+          <!-- 6. Role-Based Security Rules -->
+          <div class="glass-panel feature-box">
+            <div class="feature-icon-badge">
+              <i data-lucide="shield-check" style="width: 26px; height: 26px;"></i>
+            </div>
+            <h3 class="feature-title">Role-Based Security Rules</h3>
+            <p>Strict Firebase authorization policies ensure only authorized patients, primary physicians, and caregivers can access sensitive vitals.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Institutional Attribution & Innovation Credentials -->
+      <section class="glass-panel team-section" aria-labelledby="team-heading" style="margin-bottom: var(--space-3xl);">
+        <div style="max-width: 800px; margin: 0 auto; text-align: center;">
+          <div class="status-badge normal" style="margin-bottom: var(--space-sm);">INNOVATION CREDENTIALS</div>
+          <h2 id="team-heading" style="color:#f8fafc;">Developed by Team Alpha Squared</h2>
+          <p style="color:var(--cyan-primary); font-weight:600; font-size:1.1rem; margin-top:0.3rem;">
+            Government Polytechnic Gaya &bull; Department of Science, Technology &amp; Technical Education, Bihar
+          </p>
+          <p style="margin-top:0.75rem; font-size:0.95rem; color:var(--text-muted); line-height: 1.6;">
+            Built as an accessible, high-reliability emergency healthcare platform tailored for elderly monitoring, post-operative recovery, and lone workers in remote and community environments.
+          </p>
+          <div style="margin-top: var(--space-lg); display:flex; justify-content:center; gap: var(--space-md); flex-wrap:wrap;">
+            <a href="dashboard.html" class="btn btn-primary">
+              <i data-lucide="play" style="width: 16px; height: 16px;"></i>
+              <span>Open Monitoring Console</span>
+            </a>
+            <a href="device.html" class="btn btn-secondary">
+              <i data-lucide="cpu" style="width: 16px; height: 16px;"></i>
+              <span>Hardware Diagnostics &amp; API</span>
+            </a>
+            <a href="settings.html" class="btn btn-secondary">
+              <i data-lucide="sliders" style="width: 16px; height: 16px;"></i>
+              <span>Configure Settings</span>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-container">
+        <div class="footer-meta">
+          <div class="inst-name">ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</div>
+          <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
+          <div>created by Gautam Chaurasiya</div>
+        </div>
+        <ul class="footer-links">
+          <li><a href="about.html">About Us</a></li>
+          <li><a href="dashboard.html">Dashboard</a></li>
+          <li><a href="emergency.html">Emergency Center</a></li>
+          <li><a href="location.html">Live GPS</a></li>
+          <li><a href="history.html">History</a></li>
+          <li><a href="device.html">Hardware Info</a></li>
+          <li><a href="settings.html">Settings</a></li>
+        </ul>
+      </div>
+    </footer>
+  </div>
+
+  <!-- Page Logic Module -->
+  <script type="module" src="js/pages/about.js"></script>
+</body>
+</html>
+

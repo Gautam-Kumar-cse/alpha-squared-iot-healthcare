@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Device &amp; Hardware Diagnostics — ALPHA SQUARED IoT</title>
-  <meta name="description" content="ESP32 microcontroller telemetry health, Wi-Fi link status, and sensor subsystem diagnostics.">
+  <title>Device API Configuration &amp; Diagnostics — ALPHA SQUARED IoT</title>
+  <meta name="description" content="Configure ESP32 wearable communication protocol, authenticate device APIs, test latency, and inspect sensor subsystems.">
 
   <!-- Design System CSS -->
   <link rel="stylesheet" href="css/design-system.css">
@@ -21,14 +21,19 @@
     <header id="navbar-mount"></header>
 
     <main class="main-wrapper">
+      <!-- Topbar Header -->
       <section class="dashboard-topbar">
         <div>
-          <div class="status-badge normal" style="margin-bottom: 0.35rem;">HARDWARE TELEMETRY LINK</div>
-          <h1 style="font-size: 1.85rem; font-weight: 800;">ESP32 Node &amp; Subsystem Diagnostics</h1>
-          <p style="font-size: 0.9rem;">Wearable micro-controller status, bus health, Wi-Fi RSSI, and sensor telemetry diagnostics</p>
+          <div class="status-badge normal" style="margin-bottom: 0.35rem;">HARDWARE API &amp; DIAGNOSTICS</div>
+          <h1 style="font-size: 1.85rem; font-weight: 800;">Device API Configuration &amp; Hardware Diagnostics</h1>
+          <p style="font-size: 0.9rem;">Configure wearable communication protocols, authenticate device APIs, test network latency, and inspect sensor health</p>
         </div>
 
-        <div style="display:flex; gap:0.5rem;">
+        <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" id="btn-manual-refresh-dev">
+            <i data-lucide="refresh-cw" style="width:15px;height:15px;"></i>
+            <span>Refresh Data</span>
+          </button>
           <button class="btn btn-secondary btn-sm" id="btn-ping-hardware">
             <i data-lucide="radio" style="width:15px;height:15px;"></i>
             <span>Send Hardware Ping</span>
@@ -36,7 +41,151 @@
         </div>
       </section>
 
-      <!-- Hardware Node Status Hero -->
+      <!-- 1. Device API Configuration Panel -->
+      <section class="glass-panel" style="padding:var(--space-lg); margin-bottom:var(--space-xl); border-color:var(--border-cyan);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:1rem; margin-bottom:var(--space-md); border-bottom:1px solid var(--border-subtle); padding-bottom:var(--space-sm);">
+          <div style="display:flex; align-items:center; gap:0.6rem;">
+            <div style="width:36px; height:36px; border-radius:8px; background:rgba(0,240,255,0.1); border:1px solid var(--border-cyan); display:flex; align-items:center; justify-content:center;">
+              <i data-lucide="settings-2" style="width:20px;height:20px;color:var(--cyan-primary);"></i>
+            </div>
+            <div>
+              <h2 style="font-size:1.25rem; font-weight:700; margin:0;">Hardware Device API Configuration</h2>
+              <span style="font-size:0.8rem; color:var(--text-muted);">Manage real hardware identifiers, protocols, and secure backend proxy credentials</span>
+            </div>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:0.75rem;">
+            <div id="cfg-device-status-pill" class="status-pill offline">
+              <span class="status-dot warning" id="cfg-device-status-dot"></span>
+              <span id="cfg-device-status-label" style="font-weight:700;">DISCONNECTED</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Configuration Form -->
+        <form id="device-api-config-form" style="display:flex; flex-direction:column; gap:var(--space-md);">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:var(--space-md);">
+            <!-- Device Name -->
+            <div class="form-group">
+              <label class="form-label" for="dev-input-name">Device Name / Label</label>
+              <input type="text" id="dev-input-name" class="form-input" placeholder="e.g., Alpha Wearable Node 01" value="Alpha Wearable Node 01" required>
+              <span style="font-size:0.75rem; color:var(--text-subtle);">Friendly identifier for this healthcare monitoring node</span>
+            </div>
+
+            <!-- Device ID / MAC Address -->
+            <div class="form-group">
+              <label class="form-label" for="dev-input-id">Device Identifier / MAC Address *</label>
+              <input type="text" id="dev-input-id" class="form-input" placeholder="e.g., ESP32-ALPHA-01 or 24:6F:28:XX:XX:XX" value="ESP32-ALPHA-01" required>
+              <span style="font-size:0.75rem; color:var(--text-subtle);">Hardware identifier transmitted in device telemetry frames</span>
+            </div>
+
+            <!-- Communication Protocol / Provider -->
+            <div class="form-group">
+              <label class="form-label" for="dev-select-protocol">Communication Protocol &amp; Provider</label>
+              <select id="dev-select-protocol" class="form-select">
+                <option value="REST_HTTPS" selected>REST HTTPS Ingestion (/api/device/ingest)</option>
+                <option value="FIREBASE_RTDB">Direct Firebase RTDB (Realtime Bridge)</option>
+                <option value="MQTT_WS">MQTT over Secure WebSockets</option>
+                <option value="BLE_GATEWAY">Bluetooth Low Energy (BLE Web Gateway)</option>
+                <option value="CUSTOM_CLOUD">Custom Device Cloud API (OAuth/Bearer)</option>
+              </select>
+              <span style="font-size:0.75rem; color:var(--text-subtle);">Protocol adapter used to exchange telemetry with device</span>
+            </div>
+
+            <!-- Polling / Refresh Rate -->
+            <div class="form-group">
+              <label class="form-label" for="dev-select-refresh">Telemetry Refresh Interval</label>
+              <select id="dev-select-refresh" class="form-select">
+                <option value="5">Every 5 Seconds (High Frequency)</option>
+                <option value="10">Every 10 Seconds</option>
+                <option value="15" selected>Every 15 Seconds (Default)</option>
+                <option value="30">Every 30 Seconds</option>
+                <option value="60">Every 60 Seconds</option>
+                <option value="0">Manual Refresh Only</option>
+              </select>
+              <span style="font-size:0.75rem; color:var(--text-subtle);">How frequently the dashboard polls for incoming readings</span>
+            </div>
+
+            <!-- API Base URL -->
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label" for="dev-input-url">API Base URL / Gateway Endpoint (Optional for local ingestion)</label>
+              <input type="text" id="dev-input-url" class="form-input" placeholder="e.g., https://api.yourdevicecloud.com/v1 (Leave empty for default internal ingestion)">
+              <span style="font-size:0.75rem; color:var(--text-subtle);">Leave empty to use built-in /api/device/ingest endpoint or Firebase RTDB</span>
+            </div>
+
+            <!-- API Key / Token -->
+            <div class="form-group" style="grid-column: 1 / -1;">
+              <label class="form-label" for="dev-input-key">Hardware API Key / Access Token (Protected on Server)</label>
+              <div style="display:flex; gap:0.5rem;">
+                <input type="password" id="dev-input-key" class="form-input" placeholder="Enter hardware access token or API secret" autocomplete="off" style="flex:1;">
+                <button type="button" class="btn btn-secondary btn-sm" id="btn-toggle-key-visibility" title="Toggle Secret Visibility">
+                  <i data-lucide="eye" id="icon-toggle-key" style="width:16px;height:16px;"></i>
+                </button>
+              </div>
+              <span style="font-size:0.75rem; color:var(--text-subtle);">
+                <i data-lucide="shield-check" style="width:12px;height:12px;display:inline-block;vertical-align:middle;color:var(--cyan-primary);"></i>
+                Credential Security: Tokens are verified exclusively on the protected server backend and never exposed in client script logs.
+              </span>
+            </div>
+          </div>
+
+          <!-- Action Buttons Bar -->
+          <div style="display:flex; flex-wrap:wrap; gap:0.75rem; align-items:center; margin-top:var(--space-sm); border-top:1px solid var(--border-subtle); padding-top:var(--space-md);">
+            <button type="button" class="btn btn-primary" id="btn-connect-device">
+              <i data-lucide="plug" style="width:16px;height:16px;"></i>
+              <span id="label-connect-device">Connect Device</span>
+            </button>
+
+            <button type="button" class="btn btn-secondary" id="btn-test-connection">
+              <i data-lucide="activity" style="width:16px;height:16px;"></i>
+              <span id="label-test-connection">Test API Connection</span>
+            </button>
+
+            <button type="button" class="btn btn-secondary" id="btn-save-device-config">
+              <i data-lucide="save" style="width:16px;height:16px;"></i>
+              <span>Save Configuration</span>
+            </button>
+
+            <button type="button" class="btn btn-secondary" id="btn-disconnect-device" style="margin-left:auto; border-color:rgba(239, 68, 68, 0.4); color:#ef4444; display:none;">
+              <i data-lucide="power-off" style="width:16px;height:16px;"></i>
+              <span>Disconnect</span>
+            </button>
+          </div>
+        </form>
+
+        <!-- Diagnostic Feedback & Diagnostic Result Box -->
+        <div id="device-diagnostic-box" style="margin-top:var(--space-md); display:none; background:rgba(6,10,18,0.85); border:1px solid var(--border-cyan); border-radius:var(--radius-sm); padding:var(--space-md);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="terminal" style="width:16px;height:16px;color:var(--cyan-primary);"></i>
+              <strong style="font-size:0.875rem; color:#cbd5e1;">Connection Diagnostic Report</strong>
+            </div>
+            <span id="diag-latency-badge" class="status-badge normal">0 ms</span>
+          </div>
+          <div id="diag-message-text" style="font-size:0.85rem; color:#94a3b8; font-family:var(--font-mono); line-height:1.5;"></div>
+        </div>
+
+        <!-- Supported Parameters Pill View -->
+        <div style="margin-top:var(--space-md); padding-top:var(--space-md); border-top:1px solid var(--border-subtle); display:flex; flex-direction:column; gap:0.5rem;">
+          <div style="font-size:0.8rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">
+            Supported Telemetry Parameters:
+          </div>
+          <div style="display:flex; flex-wrap:wrap; gap:0.5rem;" id="supported-params-container">
+            <span class="status-badge normal">Blood Pressure (mmHg)</span>
+            <span class="status-badge normal">Heart Rate (BPM)</span>
+            <span class="status-badge normal">Body Temp (°C / °F)</span>
+            <span class="status-badge normal">SpO2 Oxygen (%)</span>
+            <span class="status-badge normal">Respiratory Rate</span>
+            <span class="status-badge normal">ECG Cardiac Rhythm</span>
+            <span class="status-badge normal">Blood Glucose</span>
+            <span class="status-badge normal">Steps &amp; Calories</span>
+            <span class="status-badge normal">Sleep Analysis</span>
+            <span class="status-badge normal">Hardware GPS Coordinates</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- 2. Hardware Node Status Hero -->
       <section class="glass-panel telemetry-hero normal" id="node-hero-panel" style="margin-bottom: var(--space-md);">
         <div class="telemetry-info">
           <div>
@@ -48,19 +197,20 @@
         <div class="telemetry-meta">
           <div style="color:#cbd5e1; font-size:0.875rem;">
             Node ID: <strong style="color:var(--cyan-primary);" id="node-id-text">ESP32-ALPHA-01</strong> &bull;
-            Firmware: <span style="font-family:var(--font-mono); color:#94a3b8;">v1.0.0-PROTOTYPE</span>
+            Firmware: <span style="font-family:var(--font-mono); color:#94a3b8;">v1.0.0-PROTOTYPE</span> &bull;
+            Protocol: <span style="color:#38bdf8;" id="node-protocol-text">REST HTTPS</span>
           </div>
-          <div style="font-size:0.775rem; color:var(--text-subtle); display:flex; gap:1.25rem; margin-top:0.25rem;">
+          <div style="font-size:0.775rem; color:var(--text-subtle); display:flex; gap:1.25rem; margin-top:0.25rem; flex-wrap:wrap;">
             <span>LAST HEARTBEAT: <strong id="node-last-heartbeat" style="color:var(--cyan-primary);">Just now</strong></span>
-            <span>WI-FI RSSI: <strong id="node-wifi-rssi" style="color:#34d399;">-58 dBm (Strong)</strong></span>
+            <span>WI-FI RSSI: <strong id="node-wifi-rssi" style="color:#34d399;">-58 dBm (Optimal)</strong></span>
             <span>BATTERY: <strong id="node-battery-level" style="color:#38bdf8;">94% Li-Ion</strong></span>
           </div>
         </div>
 
-        <div class="status-badge normal" id="node-state-badge">SYNCED TO RTDB</div>
+        <div class="status-badge normal" id="node-state-badge">SYNCED TO INGESTION ENGINE</div>
       </section>
 
-      <!-- Sensor Subsystem Status Grid -->
+      <!-- 3. Sensor Subsystem Status Grid -->
       <section style="margin-bottom:var(--space-xl);">
         <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:var(--space-md); display:flex; align-items:center; gap:0.5rem;">
           <i data-lucide="cpu" style="width:18px;height:18px;color:var(--cyan-primary);"></i>
@@ -134,7 +284,38 @@
         </div>
       </section>
 
-      <!-- Hardware Integration Guide & Hand-off Note -->
+      <!-- 4. Developer & Firmware Data Ingestion Specification -->
+      <section class="glass-panel" style="padding:var(--space-lg); margin-bottom:var(--space-xl); border-color:var(--border-subtle);">
+        <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:var(--space-xs); display:flex; align-items:center; gap:0.5rem; color:var(--cyan-primary);">
+          <i data-lucide="code" style="width:18px;height:18px;"></i>
+          <span>Firmware Ingestion Specification (ESP32 / Arduino / Gateway)</span>
+        </h3>
+        <p style="font-size:0.875rem; margin-bottom:var(--space-md);">
+          Future firmware running on physical ESP32 or IoT gateway hardware can transmit readings directly to the system's secure ingestion endpoint via HTTPS POST:
+        </p>
+
+        <div style="background:rgba(3,7,18,0.7); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); padding:var(--space-md); overflow-x:auto;">
+          <pre style="margin:0; font-family:var(--font-mono); font-size:0.8rem; color:#38bdf8;"><code>// HTTP POST Target: /api/device/ingest
+// Headers: Content-Type: application/json, X-API-Key: &lt;YOUR_API_KEY&gt;
+{
+  "deviceId": "ESP32-ALPHA-01",
+  "patientId": "PATIENT-001",
+  "heartRate": 78,
+  "spo2": 98,
+  "temperature": 36.6,
+  "bloodPressure": { "systolic": 120, "diastolic": 80, "pulse": 76 },
+  "respiratoryRate": 16,
+  "bloodGlucose": 95,
+  "fallDetected": false,
+  "sosPressed": false,
+  "gps": { "latitude": 24.7955, "longitude": 84.9995, "accuracy": 4.5, "satellites": 8 },
+  "battery": 94,
+  "timestamp": 1712678400000
+}</code></pre>
+        </div>
+      </section>
+
+      <!-- 5. Hardware Integration Guide & Hand-off Note -->
       <section class="glass-panel" style="padding:var(--space-lg); border-color:var(--border-cyan);">
         <h3 style="font-size:1.15rem; font-weight:700; margin-bottom:var(--space-xs); color:var(--cyan-primary);">
           Hardware Team Pinout &amp; Driver Abstraction Contract
@@ -198,6 +379,7 @@
           <div>created by Gautam Chaurasiya</div>
         </div>
         <ul class="footer-links">
+          <li><a href="about.html">About Us</a></li>
           <li><a href="dashboard.html">Dashboard</a></li>
           <li><a href="emergency.html">Emergency Center</a></li>
           <li><a href="location.html">Live GPS</a></li>
@@ -211,4 +393,3 @@
   <script type="module" src="js/pages/device.js"></script>
 </body>
 </html>
-

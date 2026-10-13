@@ -33,16 +33,30 @@
         <!-- Filter Controls -->
         <div style="display:flex; gap:0.4rem; align-items:center; flex-wrap:wrap;">
           <span style="font-size:0.8rem; color:var(--text-muted); font-weight:600;">TIMELINE:</span>
-          <button class="btn btn-secondary btn-sm time-filter-btn active" data-range="15m">Last 15m</button>
-          <button class="btn btn-secondary btn-sm time-filter-btn" data-range="1h">1 Hour</button>
-          <button class="btn btn-secondary btn-sm time-filter-btn" data-range="24h">24 Hours</button>
+          <button class="btn btn-secondary btn-sm time-filter-btn active" data-range="daily">Daily (24h)</button>
+          <button class="btn btn-secondary btn-sm time-filter-btn" data-range="weekly">Weekly (7d)</button>
+          <button class="btn btn-secondary btn-sm time-filter-btn" data-range="monthly">Monthly (30d)</button>
           <button class="btn btn-secondary btn-sm time-filter-btn" data-range="all">All Records</button>
         </div>
       </section>
 
       <!-- Multi-Chart View Grid -->
       <section style="display:flex; flex-direction:column; gap:var(--space-md);">
-        <!-- Chart 1: Heart Rate -->
+        <!-- Chart 1: Blood Pressure History -->
+        <div class="glass-panel chart-card-wrapper" style="min-height:280px;">
+          <div class="chart-header">
+            <h3 style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="gauge" style="width:18px;height:18px;color:#ef4444;"></i>
+              <span>Blood Pressure (Systolic / Diastolic mmHg)</span>
+            </h3>
+            <span class="status-badge normal" style="font-size:0.7rem;">Normal Limit: &lt;120 / &lt;80 mmHg</span>
+          </div>
+          <div class="chart-canvas-container" style="min-height:200px;">
+            <canvas id="chart-bp-history"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: Heart Rate -->
         <div class="glass-panel chart-card-wrapper" style="min-height:280px;">
           <div class="chart-header">
             <h3 style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
@@ -56,7 +70,7 @@
           </div>
         </div>
 
-        <!-- Chart 2: SpO2 Oxygen -->
+        <!-- Chart 3: SpO2 Oxygen -->
         <div class="glass-panel chart-card-wrapper" style="min-height:280px;">
           <div class="chart-header">
             <h3 style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
@@ -70,7 +84,7 @@
           </div>
         </div>
 
-        <!-- Chart 3: Temperature -->
+        <!-- Chart 4: Temperature -->
         <div class="glass-panel chart-card-wrapper" style="min-height:280px;">
           <div class="chart-header">
             <h3 style="font-size:1.1rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
@@ -90,10 +104,10 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); flex-wrap:wrap; gap:var(--space-sm);">
           <div>
             <h3 id="readings-table-heading" style="font-size:1.15rem; font-weight:700;">Historical Readings Table</h3>
-            <p style="font-size:0.8rem; color:var(--text-muted);">Timestamped telemetry payloads logged from wearable node</p>
+            <p style="font-size:0.8rem; color:var(--text-muted);">Timestamped telemetry payloads logged from connected hardware device</p>
           </div>
           <div id="history-dataset-source" class="status-badge normal" style="font-size:0.75rem;">
-            LIVE RTDB STREAM
+            HARDWARE TELEMETRY LOG
           </div>
         </div>
 
@@ -102,6 +116,7 @@
             <thead>
               <tr>
                 <th>Timestamp</th>
+                <th>Blood Pressure</th>
                 <th>Heart Rate</th>
                 <th>SpO2</th>
                 <th>Temperature</th>
@@ -110,7 +125,7 @@
             </thead>
             <tbody id="history-table-tbody">
               <tr>
-                <td colspan="5" style="text-align:center; color:var(--text-subtle); padding:var(--space-lg);">
+                <td colspan="6" style="text-align:center; color:var(--text-subtle); padding:var(--space-lg);">
                   Loading historical telemetry data...
                 </td>
               </tr>
@@ -127,6 +142,7 @@
           <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
         </div>
         <ul class="footer-links">
+          <li><a href="about.html">About Us</a></li>
           <li><a href="dashboard.html">Dashboard</a></li>
           <li><a href="emergency.html">Emergency Center</a></li>
           <li><a href="location.html">Live GPS</a></li>

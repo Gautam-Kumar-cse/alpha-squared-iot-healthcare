@@ -38,6 +38,12 @@ export function renderNavbar(activePage = '') {
             </a>
           </li>
           <li class="nav-item" role="none">
+            <a href="about.html" class="nav-link ${activePage === 'about' ? 'active' : ''}" role="menuitem">
+              <i data-lucide="info" style="width: 16px; height: 16px;"></i>
+              <span>About Us</span>
+            </a>
+          </li>
+          <li class="nav-item" role="none">
             <a href="dashboard.html" class="nav-link ${activePage === 'dashboard' ? 'active' : ''}" role="menuitem">
               <i data-lucide="layout-dashboard" style="width: 16px; height: 16px;"></i>
               <span>Dashboard</span>
@@ -101,6 +107,10 @@ export function renderNavbar(activePage = '') {
         <a href="index.html" class="nav-link ${activePage === 'home' ? 'active' : ''}">
           <i data-lucide="home" style="width: 18px; height: 18px;"></i>
           <span>Home Overview</span>
+        </a>
+        <a href="about.html" class="nav-link ${activePage === 'about' ? 'active' : ''}">
+          <i data-lucide="info" style="width: 18px; height: 18px;"></i>
+          <span>About Us</span>
         </a>
         <a href="dashboard.html" class="nav-link ${activePage === 'dashboard' ? 'active' : ''}">
           <i data-lucide="layout-dashboard" style="width: 18px; height: 18px;"></i>

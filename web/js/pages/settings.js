@@ -55,6 +55,19 @@ function loadSettings() {
   // Check Demo status
   const demoToggle = document.getElementById('toggle-demo-mode');
   demoToggle.checked = demoSimulator.isDemoActive();
+
+  // Load Hardware Device Settings
+  const hwDeviceId = localStorage.getItem('alphasquared_hw_device_id') || 'ESP32-ALPHA-01';
+  const hwModel = localStorage.getItem('alphasquared_hw_device_model') || 'CUSTOM_REST_OR_ESP32';
+  const hwApiUrl = localStorage.getItem('alphasquared_hw_api_url') || '';
+  
+  const devIdInput = document.getElementById('cfg-hw-device-id');
+  const providerInput = document.getElementById('cfg-hw-provider');
+  const apiUrlInput = document.getElementById('cfg-hw-api-url');
+  
+  if (devIdInput) devIdInput.value = hwDeviceId;
+  if (providerInput) providerInput.value = hwModel;
+  if (apiUrlInput) apiUrlInput.value = hwApiUrl;
 }
 
 function initDemoControls() {
@@ -132,6 +145,17 @@ function initSaveAction() {
         ...(projId ? { projectId: projId } : {})
       };
       saveCustomFirebaseConfig(customFb);
+    }
+
+    // 4. Save Hardware Device Settings
+    const hwDevId = document.getElementById('cfg-hw-device-id')?.value.trim();
+    const hwProv = document.getElementById('cfg-hw-provider')?.value;
+    const hwUrl = document.getElementById('cfg-hw-api-url')?.value.trim();
+    if (hwDevId) {
+      localStorage.setItem('alphasquared_hw_device_id', hwDevId);
+      localStorage.setItem('alphasquared_hw_device_model', hwProv || 'CUSTOM_REST_OR_ESP32');
+      if (hwUrl) localStorage.setItem('alphasquared_hw_api_url', hwUrl);
+      localStorage.setItem('alphasquared_hw_is_connected', 'true');
     }
 
     showToast('All settings and clinical thresholds saved successfully!', 'success');

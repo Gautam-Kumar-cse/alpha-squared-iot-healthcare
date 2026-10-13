@@ -4,8 +4,8 @@
   "cleanUrls": true,
   "rewrites": [
     {
-      "source": "/api/alerts/:match*",
-      "destination": "/api/alerts/:match*"
+      "source": "/api/:match*",
+      "destination": "/api/:match*"
     },
     {
       "source": "/(.*)",

@@ -544,3 +544,174 @@ dialog.custom-modal::backdrop {
   background: rgba(10, 35, 25, 0.95);
 }
 
+/* ==========================================================================
+   Hardware Device Connection & Multi-Parameter Monitoring Components
+   ========================================================================== */
+
+/* Device Connection Bar */
+.device-connection-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  margin-bottom: var(--space-md);
+  border-left: 4px solid var(--cyan-primary);
+}
+
+.device-connection-bar.disconnected {
+  border-left-color: #94a3b8;
+  background: rgba(15, 26, 48, 0.45);
+}
+
+.device-connection-bar.connected {
+  border-left-color: #10b981;
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.device-connection-bar.connecting {
+  border-left-color: #f59e0b;
+  background: rgba(245, 158, 11, 0.05);
+}
+
+.device-connection-bar.error {
+  border-left-color: #ef4444;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+/* Status Pill */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: var(--radius-full);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.status-pill.online {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.status-pill.offline {
+  background: rgba(148, 163, 184, 0.12);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.status-pill.busy {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+/* Device Connect Form Panel */
+.device-config-panel {
+  display: none;
+  background: rgba(10, 17, 34, 0.95);
+  border: 1px solid var(--border-cyan);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  box-shadow: var(--shadow-lg);
+}
+
+.device-config-panel.open {
+  display: block;
+  animation: fadeIn 200ms ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Disconnected State Hero / Placeholder */
+.device-not-connected-banner {
+  text-align: center;
+  padding: var(--space-2xl) var(--space-lg);
+  margin-bottom: var(--space-lg);
+  border: 2px dashed rgba(0, 240, 255, 0.25);
+  border-radius: var(--radius-md);
+  background: rgba(15, 26, 48, 0.35);
+}
+
+.device-not-connected-banner .banner-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: rgba(0, 240, 255, 0.08);
+  border: 1px solid rgba(0, 240, 255, 0.3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--cyan-primary);
+  margin-bottom: var(--space-md);
+}
+
+/* Unsupported parameter card state */
+.vital-card.unsupported {
+  opacity: 0.55;
+  filter: grayscale(60%);
+  border-style: dashed;
+}
+
+.vital-card.unsupported:hover {
+  opacity: 0.85;
+}
+
+.badge-unsupported {
+  background: rgba(148, 163, 184, 0.1);
+  color: #64748b;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+/* Temperature Unit Toggle */
+.unit-toggle-btn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  padding: 0.15rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all var(--trans-fast);
+}
+
+.unit-toggle-btn.active {
+  background: var(--cyan-subtle);
+  color: var(--cyan-primary);
+  border-color: var(--border-cyan);
+}
+
+/* ECG Rhythm Mini Waveform Canvas */
+.ecg-waveform-canvas {
+  width: 100%;
+  height: 48px;
+  border-radius: 4px;
+  background: rgba(3, 7, 18, 0.6);
+  border: 1px solid rgba(0, 240, 255, 0.15);
+  margin-top: var(--space-xs);
+}
+
+/* Blood Pressure Split Value */
+.bp-val-group {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35rem;
+}
+
+.bp-val-group .slash {
+  font-size: 1.8rem;
+  color: var(--text-subtle);
+  font-weight: 300;
+}
+

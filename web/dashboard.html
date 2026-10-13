@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Live Telemetry Dashboard — ALPHA SQUARED IoT</title>
-  <meta name="description" content="Real-time IoT patient monitoring dashboard, vital biometrics, fall status and emergency dispatch console.">
+  <title>Smart Health Monitoring Dashboard — ALPHA SQUARED IoT</title>
+  <meta name="description" content="Professional real-time IoT health monitoring dashboard connected to real hardware medical devices via secure official APIs.">
 
   <!-- Design System CSS -->
   <link rel="stylesheet" href="css/design-system.css">
@@ -44,8 +44,8 @@
         <div style="display:flex; align-items:center; gap:var(--space-md); flex-wrap:wrap;">
           <!-- Telemetry Sync Timestamp -->
           <div style="text-align:right; font-size:0.8rem; color:var(--text-muted);">
-            <div>LAST TELEMETRY UPDATE</div>
-            <div id="last-update-time" style="font-family:var(--font-mono); color:var(--text-main); font-weight:600;">Connecting...</div>
+            <div>LAST SYNCHRONIZATION</div>
+            <div id="last-update-time" style="font-family:var(--font-mono); color:var(--text-main); font-weight:600;">Not Connected</div>
           </div>
 
           <!-- Big Deliberate Manual SOS Trigger Button -->
@@ -56,21 +56,175 @@
         </div>
       </section>
 
+      <!-- Hardware Device API Integration & Connection Bar -->
+      <section class="glass-panel device-connection-bar disconnected" id="device-conn-bar">
+        <div style="display:flex; align-items:center; gap:var(--space-md); flex-wrap:wrap;">
+          <div style="display:flex; align-items:center; gap:0.5rem;">
+            <i data-lucide="cpu" style="width:20px;height:20px;color:var(--cyan-primary);"></i>
+            <div>
+              <div style="font-size:0.75rem; text-transform:uppercase; color:var(--text-muted); font-weight:700;">Hardware Connection</div>
+              <div style="font-size:0.95rem; font-weight:700; color:var(--text-main);" id="connected-device-name">No Device Connected</div>
+            </div>
+          </div>
+          <span class="status-pill offline" id="hw-status-pill">
+            <span class="status-dot warning" id="hw-status-dot"></span>
+            <span id="hw-status-label">DEVICE NOT CONNECTED</span>
+          </span>
+        </div>
+
+        <!-- Connection Controls -->
+        <div style="display:flex; align-items:center; gap:var(--space-sm); flex-wrap:wrap;">
+          <!-- Auto-refresh interval selector -->
+          <div style="display:flex; align-items:center; gap:0.35rem; font-size:0.8rem; color:var(--text-muted);">
+            <i data-lucide="timer" style="width:14px;height:14px;"></i>
+            <span>Auto-Refresh:</span>
+            <select id="select-poll-rate" class="form-select" style="padding:0.25rem 0.5rem; font-size:0.78rem; width:auto;">
+              <option value="10">Every 10s</option>
+              <option value="15" selected>Every 15s</option>
+              <option value="30">Every 30s</option>
+              <option value="60">Every 60s</option>
+              <option value="0">Manual Only</option>
+            </select>
+          </div>
+
+          <!-- Manual Refresh Button -->
+          <button type="button" class="btn btn-secondary btn-sm" id="btn-manual-refresh" title="Query Connected Hardware API Now">
+            <i data-lucide="refresh-cw" style="width:14px;height:14px;" id="icon-refresh-spin"></i>
+            <span>Refresh Data</span>
+          </button>
+
+          <!-- Toggle Device Config Panel -->
+          <button type="button" class="btn btn-primary btn-sm" id="btn-toggle-device-panel">
+            <i data-lucide="sliders-horizontal" style="width:14px;height:14px;"></i>
+            <span id="label-toggle-device-panel">Connect Device</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Expandable Hardware Device API Configuration Panel -->
+      <section class="device-config-panel" id="device-config-panel" aria-label="Hardware Device Connection Configuration">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md); border-bottom:1px solid var(--border-subtle); padding-bottom:var(--space-sm);">
+          <div>
+            <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+              <i data-lucide="link-2" style="width:18px;height:18px;color:var(--cyan-primary);"></i>
+              <span>Hardware API Connection Setup</span>
+            </h3>
+            <p style="font-size:0.8rem; color:var(--text-muted);">
+              Configure connection parameters to link your physical medical device or gateway through its official API.
+            </p>
+          </div>
+          <button type="button" class="modal-close-btn" id="btn-close-device-panel" aria-label="Close connection panel">&times;</button>
+        </div>
+
+        <!-- Connection Error Banner -->
+        <div id="hw-connect-error-banner" style="display:none; padding:0.65rem 0.95rem; border-radius:6px; background:rgba(239,68,68,0.15); border:1px solid #ef4444; color:#fca5a5; font-size:0.85rem; margin-bottom:var(--space-md);">
+        </div>
+
+        <form id="hw-device-connect-form">
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:var(--space-md);">
+            <!-- Device ID / Serial Number -->
+            <div class="form-group">
+              <label class="form-label" for="hw-input-device-id">Device ID / MAC / Serial Identifier <span style="color:#ef4444;">*</span></label>
+              <input type="text" id="hw-input-device-id" class="form-input" required placeholder="e.g. ESP32-ALPHA-01 or DEV-HEALTH-901" value="ESP32-ALPHA-01">
+              <span style="font-size:0.75rem; color:var(--text-subtle);">Official device identifier registered in your hardware cloud/gateway.</span>
+            </div>
+
+            <!-- Hardware Model / Provider Selection -->
+            <div class="form-group">
+              <label class="form-label" for="hw-select-provider">Device Model / API Provider</label>
+              <select id="hw-select-provider" class="form-select">
+                <option value="CUSTOM_REST_OR_ESP32">ESP32 Hardware Node / Custom REST Gateway</option>
+                <option value="OMRON_HEALTH">Omron Blood Pressure &amp; Vitals API</option>
+                <option value="WITHINGS_HEALTH">Withings Health Mate API</option>
+                <option value="FITBIT_WEB_API">Fitbit Health &amp; Activity Web API</option>
+                <option value="IHEALTH_CLOUD">iHealth Lab Cloud API</option>
+                <option value="CONTEC_MEDICAL">Contec Medical Pulse/ECG/BP Gateway</option>
+                <option value="TUYA_IOT_HEALTH">Tuya Smart Health IoT Platform</option>
+                <option value="WEB_BLE_GATEWAY">Bluetooth LE Health Gateway / Relay</option>
+              </select>
+              <span style="font-size:0.75rem; color:var(--text-subtle);">Select your device manufacturer or choose Custom REST / ESP32.</span>
+            </div>
+
+            <!-- API Base URL (optional for custom gateways) -->
+            <div class="form-group">
+              <label class="form-label" for="hw-input-api-url">Hardware API Base URL (Optional)</label>
+              <input type="url" id="hw-input-api-url" class="form-input" placeholder="https://api.yourdevicecloud.com/v1">
+              <span style="font-size:0.75rem; color:var(--text-subtle);">Leave blank to use default cloud gateway or server environment defaults.</span>
+            </div>
+
+            <!-- Secret API Key / Bearer Token -->
+            <div class="form-group">
+              <label class="form-label" for="hw-input-api-key">API Key / Access Token (Protected)</label>
+              <input type="password" id="hw-input-api-key" class="form-input" placeholder="••••••••••••••••••••••••">
+              <span style="font-size:0.75rem; color:var(--text-subtle);">Transmitted securely to server backend; never stored in plaintext client code.</span>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; gap:var(--space-sm); margin-top:var(--space-md); border-top:1px solid var(--border-subtle); padding-top:var(--space-md);">
+            <button type="button" class="btn btn-secondary" id="btn-disconnect-device" style="display:none;">
+              <i data-lucide="unlink" style="width:16px;height:16px;"></i>
+              <span>Disconnect Device</span>
+            </button>
+            <button type="submit" class="btn btn-primary" id="btn-submit-connect">
+              <i data-lucide="check" style="width:16px;height:16px;"></i>
+              <span id="label-connect-btn">Connect &amp; Authenticate Device</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- Development Demo Mode Active Alert Banner -->
+      <section id="demo-mode-alert-banner" style="display:none; background:rgba(245, 158, 11, 0.12); border:1px solid #f59e0b; border-radius:var(--radius-sm); padding:0.75rem 1.25rem; margin-bottom:var(--space-md); color:#fbbf24; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:0.6rem;">
+          <i data-lucide="flask-conical" style="width:20px;height:20px;color:#fbbf24;flex-shrink:0;"></i>
+          <div>
+            <strong style="color:#fde68a;">DEVELOPMENT DEMO SIMULATOR ACTIVE</strong>
+            <div style="font-size:0.8rem; color:#fef3c7;">All telemetry values and waveforms below are simulated for UI &amp; graph demonstration. They are NOT real patient readings.</div>
+          </div>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" id="btn-stop-demo-from-banner" style="border-color:#f59e0b; color:#fbbf24;">
+          <span>Exit Demo Mode</span>
+        </button>
+      </section>
+
+      <!-- Disconnected State Banner (shown when no hardware stream is active) -->
+      <section class="device-not-connected-banner" id="banner-disconnected-view">
+        <div class="banner-icon">
+          <i data-lucide="radio-off" style="width:28px;height:28px;"></i>
+        </div>
+        <h3 style="font-size:1.35rem; font-weight:800; color:var(--text-main); margin-bottom:var(--space-xs);">
+          Hardware Device Not Connected
+        </h3>
+        <p style="max-width:620px; margin:0 auto var(--space-md); color:var(--text-muted); font-size:0.925rem;">
+          To ensure clinical and telemetry integrity, fake or randomly generated numbers are strictly disabled. Please connect your real health-monitoring device via its official API or device ID to display live biometric readings.
+        </p>
+        <div style="display:flex; justify-content:center; gap:var(--space-sm); flex-wrap:wrap;">
+          <button type="button" class="btn btn-primary" id="btn-banner-open-connect">
+            <i data-lucide="link-2" style="width:16px;height:16px;"></i>
+            <span>Connect Hardware Device</span>
+          </button>
+          <a href="settings.html" class="btn btn-secondary">
+            <i data-lucide="settings" style="width:16px;height:16px;"></i>
+            <span>Configure Device Settings</span>
+          </a>
+        </div>
+      </section>
+
       <!-- Overall System Health & Status Banner -->
       <section class="glass-panel telemetry-hero normal" id="telemetry-hero-card">
         <div class="telemetry-info">
           <div>
             <div style="font-size:0.75rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--text-muted); font-weight:700;">Overall Telemetry Status</div>
-            <div class="telemetry-status-big" id="overall-status-text" style="color:var(--status-normal);">NORMAL</div>
+            <div class="telemetry-status-big" id="overall-status-text" style="color:var(--status-normal);">STANDBY</div>
           </div>
         </div>
 
         <div class="telemetry-meta" style="flex:1 1 300px; max-width:550px;">
           <div id="status-description" style="color:#cbd5e1; font-size:0.875rem;">
-            All vital signs within safe physiological ranges. ESP32 edge link is active and transmitting.
+            Awaiting authorized hardware device connection to evaluate live physiological vitals.
           </div>
           <div style="font-size:0.775rem; color:var(--text-subtle); display:flex; gap:1rem; margin-top:0.25rem;">
-            <span>EDGE LINK: <strong id="edge-link-status" style="color:#34d399;">ONLINE</strong></span>
+            <span>EDGE LINK: <strong id="edge-link-status" style="color:#94a3b8;">DISCONNECTED</strong></span>
             <span>FALL DETECTOR: <strong id="fall-hero-status" style="color:#a78bfa;">ARMED</strong></span>
             <span>GPS FIX: <strong id="gps-hero-status" style="color:#38bdf8;">ACQUIRED</strong></span>
           </div>
@@ -88,12 +242,33 @@
         </div>
       </section>
 
-      <!-- Vital Biometrics Grid Cards -->
-      <section class="vital-cards-grid" aria-label="Real-time Vital Readings">
-        <!-- Heart Rate Card -->
+      <!-- Comprehensive Health Data Cards Grid -->
+      <section class="vital-cards-grid" aria-label="Health Measurements from Connected Device">
+        
+        <!-- 1. Blood Pressure Card -->
+        <article class="glass-panel vital-card" id="card-bp">
+          <div class="vital-header">
+            <span class="vital-title">Blood Pressure</span>
+            <div class="vital-icon-wrap" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3);">
+              <i data-lucide="gauge" style="width:20px;height:20px;"></i>
+            </div>
+          </div>
+          <div class="vital-value-wrap bp-val-group">
+            <span class="vital-value" id="val-bp-sys">--</span>
+            <span class="slash">/</span>
+            <span class="vital-value" id="val-bp-dia" style="font-size:2.2rem; color:var(--text-muted);">--</span>
+            <span class="vital-unit">mmHg</span>
+          </div>
+          <div class="vital-footer">
+            <span id="bp-pulse-label">Pulse: -- BPM</span>
+            <span id="badge-bp" class="status-badge normal">AWAITING DATA</span>
+          </div>
+        </article>
+
+        <!-- 2. Heart Rate / Pulse Card -->
         <article class="glass-panel vital-card" id="card-heart-rate">
           <div class="vital-header">
-            <span class="vital-title">Heart Rate</span>
+            <span class="vital-title">Heart Rate / Pulse</span>
             <div class="vital-icon-wrap vital-icon-hr">
               <i data-lucide="heart" style="width:20px;height:20px;"></i>
             </div>
@@ -108,7 +283,32 @@
           </div>
         </article>
 
-        <!-- SpO2 Blood Oxygen Card -->
+        <!-- 3. Body Temperature Card (with °C / °F dual toggle) -->
+        <article class="glass-panel vital-card" id="card-temp">
+          <div class="vital-header">
+            <div style="display:flex; align-items:center; gap:0.4rem;">
+              <span class="vital-title">Body Temp</span>
+              <!-- Unit Selector -->
+              <div style="display:flex; gap:2px; margin-left:0.25rem;">
+                <button type="button" class="unit-toggle-btn active" id="btn-unit-celsius" title="Show in Celsius">°C</button>
+                <button type="button" class="unit-toggle-btn" id="btn-unit-fahrenheit" title="Show in Fahrenheit">°F</button>
+              </div>
+            </div>
+            <div class="vital-icon-wrap vital-icon-temp">
+              <i data-lucide="thermometer" style="width:20px;height:20px;"></i>
+            </div>
+          </div>
+          <div class="vital-value-wrap">
+            <span class="vital-value" id="val-temp" style="color:var(--vital-temp);">--</span>
+            <span class="vital-unit" id="unit-temp-display">°C</span>
+          </div>
+          <div class="vital-footer">
+            <span id="temp-range-label">Range: 36.1 – 37.5 °C</span>
+            <span id="badge-temp" class="status-badge normal">NORMAL</span>
+          </div>
+        </article>
+
+        <!-- 4. Blood Oxygen (SpO2) Card -->
         <article class="glass-panel vital-card" id="card-spo2">
           <div class="vital-header">
             <span class="vital-title">Blood Oxygen (SpO₂)</span>
@@ -126,25 +326,98 @@
           </div>
         </article>
 
-        <!-- Body Temperature Card -->
-        <article class="glass-panel vital-card" id="card-temp">
+        <!-- 5. Respiratory Rate Card -->
+        <article class="glass-panel vital-card" id="card-rr">
           <div class="vital-header">
-            <span class="vital-title">Body Temp</span>
-            <div class="vital-icon-wrap vital-icon-temp">
-              <i data-lucide="thermometer" style="width:20px;height:20px;"></i>
+            <span class="vital-title">Respiratory Rate</span>
+            <div class="vital-icon-wrap" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3);">
+              <i data-lucide="wind" style="width:20px;height:20px;"></i>
             </div>
           </div>
           <div class="vital-value-wrap">
-            <span class="vital-value" id="val-temp" style="color:var(--vital-temp);">--</span>
-            <span class="vital-unit">°C</span>
+            <span class="vital-value" id="val-rr" style="color:#38bdf8;">--</span>
+            <span class="vital-unit">breaths/min</span>
           </div>
           <div class="vital-footer">
-            <span>Range: 36.1 – 37.5 °C</span>
-            <span id="badge-temp" class="status-badge normal">NORMAL</span>
+            <span>Limit: 12 – 20 rpm</span>
+            <span id="badge-rr" class="status-badge normal">NORMAL</span>
           </div>
         </article>
 
-        <!-- Fall & Movement Status Card -->
+        <!-- 6. Blood Glucose Card -->
+        <article class="glass-panel vital-card" id="card-glucose">
+          <div class="vital-header">
+            <span class="vital-title">Blood Glucose</span>
+            <div class="vital-icon-wrap" style="background:rgba(234,179,8,0.15); color:#eab308; border:1px solid rgba(234,179,8,0.3);">
+              <i data-lucide="test-tube-2" style="width:20px;height:20px;"></i>
+            </div>
+          </div>
+          <div class="vital-value-wrap">
+            <span class="vital-value" id="val-glucose" style="color:#eab308;">--</span>
+            <span class="vital-unit" id="unit-glucose">mg/dL</span>
+          </div>
+          <div class="vital-footer">
+            <span id="glucose-context-label">Fasting Context</span>
+            <span id="badge-glucose" class="status-badge normal">AWAITING</span>
+          </div>
+        </article>
+
+        <!-- 7. ECG / Cardiac Rhythm Waveform Card -->
+        <article class="glass-panel vital-card" id="card-ecg" style="grid-column:span 1;">
+          <div class="vital-header">
+            <span class="vital-title">ECG &amp; Cardiac Rhythm</span>
+            <div class="vital-icon-wrap" style="background:rgba(168,85,247,0.15); color:#a855f7; border:1px solid rgba(168,85,247,0.3);">
+              <i data-lucide="activity" style="width:20px;height:20px;"></i>
+            </div>
+          </div>
+          <div style="margin:var(--space-xs) 0;">
+            <div style="font-size:1.15rem; font-weight:700; color:#cbd5e1;" id="val-ecg-rhythm">Normal Sinus Rhythm</div>
+            <div style="font-size:0.75rem; color:var(--text-subtle);" id="ecg-leads-status">Leads Connected (Lead I/II)</div>
+            <canvas class="ecg-waveform-canvas" id="canvas-ecg-trace"></canvas>
+          </div>
+          <div class="vital-footer">
+            <span>Electrophysiology</span>
+            <span id="badge-ecg" class="status-badge normal">RHYTHM OK</span>
+          </div>
+        </article>
+
+        <!-- 8. Steps & Daily Activity Card -->
+        <article class="glass-panel vital-card" id="card-activity">
+          <div class="vital-header">
+            <span class="vital-title">Daily Activity &amp; Steps</span>
+            <div class="vital-icon-wrap" style="background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3);">
+              <i data-lucide="footprints" style="width:20px;height:20px;"></i>
+            </div>
+          </div>
+          <div class="vital-value-wrap">
+            <span class="vital-value" id="val-steps" style="color:#22c55e;">--</span>
+            <span class="vital-unit">steps</span>
+          </div>
+          <div class="vital-footer">
+            <span id="activity-sub-label">0 kcal burned</span>
+            <span id="badge-activity" class="status-badge normal">ACTIVE</span>
+          </div>
+        </article>
+
+        <!-- 9. Sleep Analysis Card -->
+        <article class="glass-panel vital-card" id="card-sleep">
+          <div class="vital-header">
+            <span class="vital-title">Sleep Duration &amp; Score</span>
+            <div class="vital-icon-wrap" style="background:rgba(129,140,248,0.15); color:#818cf8; border:1px solid rgba(129,140,248,0.3);">
+              <i data-lucide="moon" style="width:20px;height:20px;"></i>
+            </div>
+          </div>
+          <div class="vital-value-wrap">
+            <span class="vital-value" id="val-sleep-hours" style="color:#818cf8;">--</span>
+            <span class="vital-unit">hours</span>
+          </div>
+          <div class="vital-footer">
+            <span id="sleep-sub-label">Deep Sleep: -- hrs</span>
+            <span id="badge-sleep" class="status-badge normal">RESTFUL</span>
+          </div>
+        </article>
+
+        <!-- 10. Fall & Movement Status Card -->
         <article class="glass-panel vital-card" id="card-fall">
           <div class="vital-header">
             <span class="vital-title">Fall Detection</span>
@@ -160,22 +433,31 @@
             <span id="badge-fall" class="status-badge normal">STABLE</span>
           </div>
         </article>
+
       </section>
 
       <!-- Center Analytics & Location Grid -->
       <section class="grid-dashboard">
-        <!-- Live Vitals Telemetry Chart (Chart.js) -->
+        <!-- Live & Historical Vitals Telemetry Chart (Chart.js) -->
         <div class="col-8">
           <div class="glass-panel chart-card-wrapper">
             <div class="chart-header">
               <div>
-                <h3 style="font-size:1.15rem; font-weight:700;">Recent Vital Trends</h3>
-                <div style="font-size:0.775rem; color:var(--text-muted);">Real-time stream of Heart Rate (BPM) &amp; SpO₂ (%)</div>
+                <h3 style="font-size:1.15rem; font-weight:700;">Health Monitoring History &amp; Trends</h3>
+                <div style="font-size:0.775rem; color:var(--text-muted);">
+                  Telemetry stream from connected hardware device
+                </div>
               </div>
-              <div style="display:flex; gap:0.4rem;">
-                <span class="status-badge normal" style="font-size:0.7rem;">STREAMING</span>
+              
+              <!-- Historical Range Filter Buttons -->
+              <div style="display:flex; gap:0.35rem; align-items:center;">
+                <button type="button" class="btn btn-secondary btn-sm filter-range-btn active" data-range="daily">Daily (24h)</button>
+                <button type="button" class="btn btn-secondary btn-sm filter-range-btn" data-range="weekly">Weekly (7d)</button>
+                <button type="button" class="btn btn-secondary btn-sm filter-range-btn" data-range="monthly">Monthly (30d)</button>
+                <span class="status-badge normal" id="chart-stream-badge" style="font-size:0.7rem;">LIVE</span>
               </div>
             </div>
+            
             <div class="chart-canvas-container">
               <canvas id="live-vitals-chart"></canvas>
             </div>
@@ -223,6 +505,11 @@
         </div>
       </section>
 
+      <!-- Medical Disclaimer & Informational Notice -->
+      <section style="margin-top:var(--space-md); padding:0.75rem 1.25rem; background:rgba(15,26,48,0.5); border:1px solid var(--border-subtle); border-radius:var(--radius-sm); font-size:0.78rem; color:var(--text-subtle); line-height:1.4;">
+        <strong style="color:#cbd5e1;">Medical Information Notice:</strong> All biometric readings displayed on this dashboard are retrieved through authorized hardware device APIs and are intended exclusively for monitoring and assistive caregiver alerts. They do not constitute formal medical diagnoses or clinical prescriptions.
+      </section>
+
       <!-- Recent Incidents & Emergency Activity Preview -->
       <section class="glass-panel" style="margin-top:var(--space-md); padding:var(--space-lg);" aria-labelledby="recent-incidents-heading">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:var(--space-md);">
@@ -265,9 +552,9 @@
         <div class="footer-meta">
           <div class="inst-name">ALPHA SQUARED — IoT Smart Health &amp; Emergency Detection System</div>
           <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
-          <div>created by Gautam Chaurasiya</div>
-      
+        </div>
         <ul class="footer-links">
+          <li><a href="about.html">About Us</a></li>
           <li><a href="dashboard.html">Dashboard</a></li>
           <li><a href="emergency.html">Emergency Center</a></li>
           <li><a href="location.html">Live GPS</a></li>
@@ -283,4 +570,3 @@
   <script type="module" src="js/pages/dashboard.js"></script>
 </body>
 </html>
-

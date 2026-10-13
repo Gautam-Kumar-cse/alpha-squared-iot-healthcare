@@ -167,6 +167,50 @@
             </div>
           </div>
 
+          <!-- Hardware Device Official API Configuration -->
+          <div class="glass-panel" style="padding:var(--space-lg); margin-bottom:var(--space-md);">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
+              <h3 style="font-size:1.15rem; font-weight:700; display:flex; align-items:center; gap:0.5rem;">
+                <i data-lucide="cpu" style="width:18px;height:18px;color:var(--cyan-primary);"></i>
+                <span>Hardware Device Official API Link</span>
+              </h3>
+              <span id="settings-hw-status-badge" class="status-badge normal">HARDWARE READY</span>
+            </div>
+
+            <p style="font-size:0.85rem; margin-bottom:var(--space-md);">
+              Configure your health-monitoring device credentials to retrieve and display authentic biometric readings.
+            </p>
+
+            <div class="form-group">
+              <label class="form-label" for="cfg-hw-device-id">Device Identifier / Serial ID</label>
+              <input type="text" id="cfg-hw-device-id" class="form-input" placeholder="e.g. ESP32-ALPHA-01 or DEV-HEALTH-901">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="cfg-hw-provider">Device Model / Cloud Provider</label>
+              <select id="cfg-hw-provider" class="form-select">
+                <option value="CUSTOM_REST_OR_ESP32">ESP32 Hardware Node / Custom REST Gateway</option>
+                <option value="OMRON_HEALTH">Omron Blood Pressure &amp; Vitals API</option>
+                <option value="WITHINGS_HEALTH">Withings Health Mate API</option>
+                <option value="FITBIT_WEB_API">Fitbit Health &amp; Activity Web API</option>
+                <option value="IHEALTH_CLOUD">iHealth Lab Cloud API</option>
+                <option value="CONTEC_MEDICAL">Contec Medical Pulse/ECG/BP Gateway</option>
+                <option value="TUYA_IOT_HEALTH">Tuya Smart Health IoT Platform</option>
+                <option value="WEB_BLE_GATEWAY">Bluetooth LE Health Gateway / Relay</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="cfg-hw-api-url">Hardware API Base URL</label>
+              <input type="url" id="cfg-hw-api-url" class="form-input" placeholder="https://api.yourdevicecloud.com/v1">
+            </div>
+
+            <div class="form-group">
+              <label class="form-label" for="cfg-hw-api-key">API Key / Access Token (Encrypted on Server)</label>
+              <input type="password" id="cfg-hw-api-key" class="form-input" placeholder="••••••••••••••••••••••••">
+            </div>
+          </div>
+
           <!-- Firebase Cloud Database Configuration -->
           <div class="glass-panel" style="padding:var(--space-lg);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-md);">
@@ -213,6 +257,7 @@
           <div>Team Alpha Squared &bull; Government Polytechnic Gaya, Bihar</div>
         </div>
         <ul class="footer-links">
+          <li><a href="about.html">About Us</a></li>
           <li><a href="dashboard.html">Dashboard</a></li>
           <li><a href="emergency.html">Emergency Center</a></li>
           <li><a href="location.html">Live GPS</a></li>

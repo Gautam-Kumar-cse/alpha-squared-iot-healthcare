@@ -5,8 +5,8 @@
   "description": "ALPHA SQUARED — IoT Smart Health & Emergency Detection System for Team Alpha Squared, Government Polytechnic Gaya",
   "main": "web/index.html",
   "scripts": {
-    "start": "serve web -l 3000",
-    "dev": "serve web -l 3000",
+    "start": "node server.js",
+    "dev": "node server.js",
     "test": "node testing/run_tests.js"
   },
   "keywords": [
