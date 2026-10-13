@@ -365,38 +365,38 @@ export function renderTelemetryData(payload) {
     }
   }
 
-  // 1. Blood Pressure Card
-  const bpSysEl = document.getElementById('val-bp-sys');
-  const bpDiaEl = document.getElementById('val-bp-dia');
-  const bpBadge = document.getElementById('badge-bp');
-  const bpPulse = document.getElementById('bp-pulse-label');
+  // 1. Blood Pressure Card (if present in DOM)
   const bpCard = document.getElementById('card-bp');
-  const bpZone = zoneEval.measurementZones.bloodPressure || 'GREEN';
+  if (bpCard) {
+    const bpSysEl = document.getElementById('val-bp-sys');
+    const bpDiaEl = document.getElementById('val-bp-dia');
+    const bpBadge = document.getElementById('badge-bp');
+    const bpPulse = document.getElementById('bp-pulse-label');
+    const bpZone = zoneEval.measurementZones.bloodPressure || 'GREEN';
 
-  if (payload.bloodPressure && payload.bloodPressure.systolic != null) {
-    const sys = payload.bloodPressure.systolic;
-    const dia = payload.bloodPressure.diastolic;
-    if (bpSysEl) bpSysEl.textContent = sys;
-    if (bpDiaEl) bpDiaEl.textContent = dia;
-    if (bpPulse && payload.bloodPressure.pulse) bpPulse.textContent = `Pulse: ${payload.bloodPressure.pulse} BPM`;
-    if (bpBadge) {
-      if (bpZone === 'RED') {
-        bpBadge.className = 'status-badge zone-red';
-        bpBadge.textContent = (sys >= 180 || dia >= 120) ? 'CRISIS' : 'STAGE 2 HYPERTENSION';
-      } else if (bpZone === 'YELLOW') {
-        bpBadge.className = 'status-badge zone-yellow';
-        bpBadge.textContent = 'ELEVATED / PRE-HTN';
-      } else {
-        bpBadge.className = 'status-badge zone-green';
-        bpBadge.textContent = 'OPTIMAL';
+    if (payload.bloodPressure && payload.bloodPressure.systolic != null) {
+      const sys = payload.bloodPressure.systolic;
+      const dia = payload.bloodPressure.diastolic;
+      if (bpSysEl) bpSysEl.textContent = sys;
+      if (bpDiaEl) bpDiaEl.textContent = dia;
+      if (bpPulse && payload.bloodPressure.pulse) bpPulse.textContent = `Pulse: ${payload.bloodPressure.pulse} BPM`;
+      if (bpBadge) {
+        if (bpZone === 'RED') {
+          bpBadge.className = 'status-badge zone-red';
+          bpBadge.textContent = (sys >= 180 || dia >= 120) ? 'CRISIS' : 'STAGE 2 HYPERTENSION';
+        } else if (bpZone === 'YELLOW') {
+          bpBadge.className = 'status-badge zone-yellow';
+          bpBadge.textContent = 'ELEVATED / PRE-HTN';
+        } else {
+          bpBadge.className = 'status-badge zone-green';
+          bpBadge.textContent = 'OPTIMAL';
+        }
       }
-    }
-    if (bpCard) {
       bpCard.className = `glass-panel vital-card card-zone-${bpZone.toLowerCase()}`;
       bpCard.classList.remove('unsupported');
+    } else {
+      markUnsupported(bpCard, bpBadge, 'Awaiting BP Cuff');
     }
-  } else {
-    markUnsupported(bpCard, bpBadge, 'Awaiting BP Cuff');
   }
 
   // 2. Heart Rate / Pulse Card
@@ -454,167 +454,186 @@ export function renderTelemetryData(payload) {
     markUnsupported(tempCard, tempBadge, 'Awaiting Probe');
   }
 
-  // 4. Blood Oxygen (SpO2) Card
-  const spo2El = document.getElementById('val-spo2');
-  const spo2Badge = document.getElementById('badge-spo2');
+  // 4. Blood Oxygen (SpO2) Card (if present in DOM)
   const spo2Card = document.getElementById('card-spo2');
-  const spo2Val = payload.spo2?.value ?? (typeof payload.spo2 === 'number' ? payload.spo2 : null);
-  const spo2Zone = zoneEval.measurementZones.spo2 || 'GREEN';
+  if (spo2Card) {
+    const spo2El = document.getElementById('val-spo2');
+    const spo2Badge = document.getElementById('badge-spo2');
+    const spo2Val = payload.spo2?.value ?? (typeof payload.spo2 === 'number' ? payload.spo2 : null);
+    const spo2Zone = zoneEval.measurementZones.spo2 || 'GREEN';
 
-  if (spo2Val != null) {
-    if (spo2El) spo2El.textContent = spo2Val;
-    if (spo2Badge && spo2Card) {
-      if (spo2Zone === 'RED') {
-        spo2Badge.className = 'status-badge zone-red';
-        spo2Badge.textContent = 'CRITICAL HYPOXIA';
-      } else if (spo2Zone === 'YELLOW') {
-        spo2Badge.className = 'status-badge zone-yellow';
-        spo2Badge.textContent = 'MILD HYPOXIA';
-      } else {
-        spo2Badge.className = 'status-badge zone-green';
-        spo2Badge.textContent = 'OPTIMAL';
+    if (spo2Val != null) {
+      if (spo2El) spo2El.textContent = spo2Val;
+      if (spo2Badge) {
+        if (spo2Zone === 'RED') {
+          spo2Badge.className = 'status-badge zone-red';
+          spo2Badge.textContent = 'CRITICAL HYPOXIA';
+        } else if (spo2Zone === 'YELLOW') {
+          spo2Badge.className = 'status-badge zone-yellow';
+          spo2Badge.textContent = 'MILD HYPOXIA';
+        } else {
+          spo2Badge.className = 'status-badge zone-green';
+          spo2Badge.textContent = 'OPTIMAL';
+        }
       }
       spo2Card.className = `glass-panel vital-card card-zone-${spo2Zone.toLowerCase()}`;
       spo2Card.classList.remove('unsupported');
+    } else {
+      markUnsupported(spo2Card, spo2Badge, 'Awaiting Oximeter');
     }
-  } else {
-    markUnsupported(spo2Card, spo2Badge, 'Awaiting Oximeter');
   }
 
-  // 5. Respiratory Rate Card
-  const rrEl = document.getElementById('val-rr');
-  const rrBadge = document.getElementById('badge-rr');
+  // 5. Respiratory Rate Card (if present in DOM)
   const rrCard = document.getElementById('card-rr');
-  const rrVal = payload.respiratoryRate?.value ?? (typeof payload.respiratoryRate === 'number' ? payload.respiratoryRate : null);
-  const rrZone = zoneEval.measurementZones.respiratoryRate || 'GREEN';
+  if (rrCard) {
+    const rrEl = document.getElementById('val-rr');
+    const rrBadge = document.getElementById('badge-rr');
+    const rrVal = payload.respiratoryRate?.value ?? (typeof payload.respiratoryRate === 'number' ? payload.respiratoryRate : null);
+    const rrZone = zoneEval.measurementZones.respiratoryRate || 'GREEN';
 
-  if (rrVal != null) {
-    if (rrEl) rrEl.textContent = rrVal;
-    if (rrBadge && rrCard) {
-      if (rrZone === 'RED') {
-        rrBadge.className = 'status-badge zone-red';
-        rrBadge.textContent = rrVal > 25 ? 'CRITICAL TACHYPNEA' : 'CRITICAL BRADYPNEA';
-      } else if (rrZone === 'YELLOW') {
-        rrBadge.className = 'status-badge zone-yellow';
-        rrBadge.textContent = rrVal > 20 ? 'ELEVATED' : 'LOW RR';
-      } else {
-        rrBadge.className = 'status-badge zone-green';
-        rrBadge.textContent = 'NORMAL';
+    if (rrVal != null) {
+      if (rrEl) rrEl.textContent = rrVal;
+      if (rrBadge) {
+        if (rrZone === 'RED') {
+          rrBadge.className = 'status-badge zone-red';
+          rrBadge.textContent = rrVal > 25 ? 'CRITICAL TACHYPNEA' : 'CRITICAL BRADYPNEA';
+        } else if (rrZone === 'YELLOW') {
+          rrBadge.className = 'status-badge zone-yellow';
+          rrBadge.textContent = rrVal > 20 ? 'ELEVATED' : 'LOW RR';
+        } else {
+          rrBadge.className = 'status-badge zone-green';
+          rrBadge.textContent = 'NORMAL';
+        }
       }
       rrCard.className = `glass-panel vital-card card-zone-${rrZone.toLowerCase()}`;
       rrCard.classList.remove('unsupported');
+    } else {
+      markUnsupported(rrCard, rrBadge, 'Not on Device');
     }
-  } else {
-    markUnsupported(rrCard, rrBadge, 'Not on Device');
   }
 
-  // 6. Blood Glucose Card
-  const glucEl = document.getElementById('val-glucose');
-  const glucBadge = document.getElementById('badge-glucose');
+  // 6. Blood Glucose Card (if present in DOM)
   const glucCard = document.getElementById('card-glucose');
-  const glucContext = document.getElementById('glucose-context-label');
-  const glucVal = payload.bloodGlucose?.value ?? (typeof payload.bloodGlucose === 'number' ? payload.bloodGlucose : null);
-  const glucZone = zoneEval.measurementZones.bloodGlucose || 'GREEN';
+  if (glucCard) {
+    const glucEl = document.getElementById('val-glucose');
+    const glucBadge = document.getElementById('badge-glucose');
+    const glucContext = document.getElementById('glucose-context-label');
+    const glucVal = payload.bloodGlucose?.value ?? (typeof payload.bloodGlucose === 'number' ? payload.bloodGlucose : null);
+    const glucZone = zoneEval.measurementZones.bloodGlucose || 'GREEN';
 
-  if (glucVal != null) {
-    if (glucEl) glucEl.textContent = glucVal;
-    if (glucBadge && glucCard) {
-      if (glucZone === 'RED') {
-        glucBadge.className = 'status-badge zone-red';
-        glucBadge.textContent = glucVal >= 200 ? 'SEVERE HIGH' : 'CRITICAL LOW';
-      } else if (glucZone === 'YELLOW') {
-        glucBadge.className = 'status-badge zone-yellow';
-        glucBadge.textContent = glucVal > 140 ? 'ELEVATED' : 'BORDERLINE LOW';
-      } else {
-        glucBadge.className = 'status-badge zone-green';
-        glucBadge.textContent = 'NORMAL';
+    if (glucVal != null) {
+      if (glucEl) glucEl.textContent = glucVal;
+      if (glucBadge) {
+        if (glucZone === 'RED') {
+          glucBadge.className = 'status-badge zone-red';
+          glucBadge.textContent = glucVal >= 200 ? 'SEVERE HIGH' : 'CRITICAL LOW';
+        } else if (glucZone === 'YELLOW') {
+          glucBadge.className = 'status-badge zone-yellow';
+          glucBadge.textContent = glucVal > 140 ? 'ELEVATED' : 'BORDERLINE LOW';
+        } else {
+          glucBadge.className = 'status-badge zone-green';
+          glucBadge.textContent = 'NORMAL';
+        }
       }
       glucCard.className = `glass-panel vital-card card-zone-${glucZone.toLowerCase()}`;
       glucCard.classList.remove('unsupported');
+      if (glucContext && payload.bloodGlucose?.mealContext) {
+        glucContext.textContent = payload.bloodGlucose.mealContext;
+      }
+    } else {
+      markUnsupported(glucCard, glucBadge, 'Not on Device');
     }
-    if (glucContext && payload.bloodGlucose?.mealContext) {
-      glucContext.textContent = payload.bloodGlucose.mealContext;
-    }
-  } else {
-    markUnsupported(glucCard, glucBadge, 'Not on Device');
   }
 
-  // 7. ECG Rhythm & Waveform Card
-  const ecgRhythmEl = document.getElementById('val-ecg-rhythm');
-  const ecgLeadsEl = document.getElementById('ecg-leads-status');
-  const ecgBadge = document.getElementById('badge-ecg');
+  // 7. ECG Rhythm & Waveform Card (if present in DOM)
   const ecgCard = document.getElementById('card-ecg');
+  if (ecgCard) {
+    const ecgRhythmEl = document.getElementById('val-ecg-rhythm');
+    const ecgLeadsEl = document.getElementById('ecg-leads-status');
+    const ecgBadge = document.getElementById('badge-ecg');
 
-  if (payload.ecg) {
-    if (ecgRhythmEl) ecgRhythmEl.textContent = payload.ecg.rhythm || 'Normal Sinus Rhythm';
-    if (ecgLeadsEl) ecgLeadsEl.textContent = payload.ecg.leadsStatus || 'Leads Connected';
-    if (ecgBadge) {
-      const isNominal = payload.ecg.rhythm?.includes('Normal');
-      ecgBadge.textContent = isNominal ? 'RHYTHM OK' : 'ANOMALY DETECTED';
-      ecgBadge.className = isNominal ? 'status-badge zone-green' : 'status-badge zone-red';
+    if (payload.ecg) {
+      if (ecgRhythmEl) ecgRhythmEl.textContent = payload.ecg.rhythm || 'Normal Sinus Rhythm';
+      if (ecgLeadsEl) ecgLeadsEl.textContent = payload.ecg.leadsStatus || 'Leads Connected';
+      if (ecgBadge) {
+        const isNominal = payload.ecg.rhythm?.includes('Normal');
+        ecgBadge.textContent = isNominal ? 'RHYTHM OK' : 'ANOMALY DETECTED';
+        ecgBadge.className = isNominal ? 'status-badge zone-green' : 'status-badge zone-red';
+      }
+      ecgCard.classList.remove('unsupported');
+    } else {
+      markUnsupported(ecgCard, ecgBadge, 'Not on Device');
     }
-    if (ecgCard) ecgCard.classList.remove('unsupported');
-  } else {
-    markUnsupported(ecgCard, ecgBadge, 'Not on Device');
   }
 
-  // 8. Steps & Daily Activity Card
-  const stepsEl = document.getElementById('val-steps');
-  const actSub = document.getElementById('activity-sub-label');
+  // 8. Steps & Daily Activity Card (if present in DOM)
   const actCard = document.getElementById('card-activity');
-  const stepsVal = payload.activity?.steps ?? payload.steps;
+  if (actCard) {
+    const stepsEl = document.getElementById('val-steps');
+    const actSub = document.getElementById('activity-sub-label');
+    const stepsVal = payload.activity?.steps ?? payload.steps;
 
-  if (stepsVal != null) {
-    if (stepsEl) stepsEl.textContent = Number(stepsVal).toLocaleString();
-    if (actSub && payload.activity?.calories) {
-      actSub.textContent = `${payload.activity.calories} kcal burned`;
+    if (stepsVal != null) {
+      if (stepsEl) stepsEl.textContent = Number(stepsVal).toLocaleString();
+      if (actSub && payload.activity?.calories) {
+        actSub.textContent = `${payload.activity.calories} kcal burned`;
+      }
+      actCard.classList.remove('unsupported');
+    } else {
+      markUnsupported(actCard, null, 'Not on Device');
     }
-    if (actCard) actCard.classList.remove('unsupported');
-  } else {
-    markUnsupported(actCard, null, 'Not on Device');
   }
 
-  // 9. Sleep Analysis Card
-  const sleepEl = document.getElementById('val-sleep-hours');
-  const sleepSub = document.getElementById('sleep-sub-label');
+  // 9. Sleep Analysis Card (if present in DOM)
   const sleepCard = document.getElementById('card-sleep');
-  const sleepVal = payload.sleep?.totalDurationHours ?? payload.sleepHours;
+  if (sleepCard) {
+    const sleepEl = document.getElementById('val-sleep-hours');
+    const sleepSub = document.getElementById('sleep-sub-label');
+    const sleepVal = payload.sleep?.totalDurationHours ?? payload.sleepHours;
 
-  if (sleepVal != null) {
-    if (sleepEl) sleepEl.textContent = sleepVal;
-    if (sleepSub && payload.sleep?.deepSleepHours) {
-      sleepSub.textContent = `Deep Sleep: ${payload.sleep.deepSleepHours} hrs`;
+    if (sleepVal != null) {
+      if (sleepEl) sleepEl.textContent = sleepVal;
+      if (sleepSub && payload.sleep?.deepSleepHours) {
+        sleepSub.textContent = `Deep Sleep: ${payload.sleep.deepSleepHours} hrs`;
+      }
+      sleepCard.classList.remove('unsupported');
+    } else {
+      markUnsupported(sleepCard, null, 'Not on Device');
     }
-    if (sleepCard) sleepCard.classList.remove('unsupported');
-  } else {
-    markUnsupported(sleepCard, null, 'Not on Device');
   }
 
-  // 10. Fall & Movement Status Card
+  // 10. Fall & Movement Status (Hero status strip + optional card)
   const fallEl = document.getElementById('val-fall');
   const fallBadge = document.getElementById('badge-fall');
   const fallHero = document.getElementById('fall-hero-status');
-  if (fallEl && fallBadge) {
-    if (payload.fallDetected) {
+  if (payload.fallDetected) {
+    if (fallEl) {
       fallEl.textContent = 'FALL DETECTED!';
       fallEl.style.color = '#ef4444';
+    }
+    if (fallBadge) {
       fallBadge.className = 'status-badge zone-red';
       fallBadge.textContent = 'IMPACT DETECTED';
-      if (fallHero) {
-        fallHero.textContent = 'TRIGGERED';
-        fallHero.style.color = '#ef4444';
-      }
-    } else {
+    }
+    if (fallHero) {
+      fallHero.textContent = 'TRIGGERED';
+      fallHero.style.color = '#ef4444';
+    }
+  } else {
+    if (fallEl) {
       fallEl.textContent = 'STABLE';
       fallEl.style.color = 'var(--vital-motion)';
+    }
+    if (fallBadge) {
       fallBadge.className = 'status-badge zone-green';
       fallBadge.textContent = 'STABLE';
-      if (fallHero) {
-        fallHero.textContent = 'ARMED';
-        fallHero.style.color = '#a78bfa';
-      }
+    }
+    if (fallHero) {
+      fallHero.textContent = 'ARMED';
+      fallHero.style.color = '#a78bfa';
     }
   }
+
 
   // Subsystems & Health Hardware Strip
   const batEl = document.getElementById('telemetry-battery');
@@ -650,9 +669,9 @@ export function renderTelemetryData(payload) {
 
   // Update Live Stream Chart
   const currentHr = hrVal ?? null;
-  const currentSpo2 = spo2Val ?? null;
+  const currentSpo2 = payload.spo2?.value ?? (typeof payload.spo2 === 'number' ? payload.spo2 : null);
   const currentSys = payload.bloodPressure?.systolic ?? null;
-  if (currentHr || currentSpo2) {
+  if (currentHr != null || currentSpo2 != null) {
     updateChart(timeFormatted, currentHr, currentSpo2, currentSys);
   }
 }
@@ -702,16 +721,35 @@ function markUnsupported(cardEl, badgeEl, labelText) {
 }
 
 function clearVitalsDisplay() {
-  document.getElementById('val-bp-sys').textContent = '--';
-  document.getElementById('val-bp-dia').textContent = '--';
-  document.getElementById('val-heart-rate').textContent = '--';
-  document.getElementById('val-temp').textContent = '--';
-  document.getElementById('val-spo2').textContent = '--';
-  document.getElementById('val-rr').textContent = '--';
-  document.getElementById('val-glucose').textContent = '--';
-  document.getElementById('val-steps').textContent = '--';
-  document.getElementById('val-sleep-hours').textContent = '--';
-  document.getElementById('last-update-time').textContent = 'Not Connected';
+  const hrEl = document.getElementById('val-heart-rate');
+  if (hrEl) hrEl.textContent = '--';
+
+  const tempEl = document.getElementById('val-temp');
+  if (tempEl) tempEl.textContent = '--';
+
+  const bpSysEl = document.getElementById('val-bp-sys');
+  if (bpSysEl) bpSysEl.textContent = '--';
+
+  const bpDiaEl = document.getElementById('val-bp-dia');
+  if (bpDiaEl) bpDiaEl.textContent = '--';
+
+  const spo2El = document.getElementById('val-spo2');
+  if (spo2El) spo2El.textContent = '--';
+
+  const rrEl = document.getElementById('val-rr');
+  if (rrEl) rrEl.textContent = '--';
+
+  const glucEl = document.getElementById('val-glucose');
+  if (glucEl) glucEl.textContent = '--';
+
+  const stepsEl = document.getElementById('val-steps');
+  if (stepsEl) stepsEl.textContent = '--';
+
+  const sleepEl = document.getElementById('val-sleep-hours');
+  if (sleepEl) sleepEl.textContent = '--';
+
+  const lastTimeEl = document.getElementById('last-update-time');
+  if (lastTimeEl) lastTimeEl.textContent = 'Not Connected';
   
   const heroText = document.getElementById('overall-status-text');
   const heroDesc = document.getElementById('status-description');

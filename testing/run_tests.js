@@ -801,6 +801,89 @@ runTest('Client Zone Engine: Mirrors backend clinical boundaries accurately', ()
 });
 
 // ---------------------------------------------------------
+// 15. Dashboard Cards Modernization & Dual-Card Layout Tests
+// ---------------------------------------------------------
+runTest('Dashboard HTML: Keeps exclusively Heart Rate and Body Temperature cards in vital-cards-grid', () => {
+  const dashboardHtml = fs.readFileSync(path.resolve(process.cwd(), 'web/dashboard.html'), 'utf-8');
+  
+  // Must contain Heart Rate and Body Temp
+  assert.ok(dashboardHtml.includes('id="card-heart-rate"'), 'Must contain card-heart-rate');
+  assert.ok(dashboardHtml.includes('id="val-heart-rate"'), 'Must contain val-heart-rate');
+  assert.ok(dashboardHtml.includes('id="badge-heart-rate"'), 'Must contain badge-heart-rate');
+  assert.ok(dashboardHtml.includes('id="card-temp"'), 'Must contain card-temp');
+  assert.ok(dashboardHtml.includes('id="val-temp"'), 'Must contain val-temp');
+  assert.ok(dashboardHtml.includes('id="badge-temp"'), 'Must contain badge-temp');
+  assert.ok(dashboardHtml.includes('id="btn-unit-celsius"'), 'Must contain btn-unit-celsius');
+  assert.ok(dashboardHtml.includes('id="btn-unit-fahrenheit"'), 'Must contain btn-unit-fahrenheit');
+  assert.ok(dashboardHtml.includes('dual-cards-layout'), 'Must use dual-cards-layout');
+
+  // Must NOT contain removed cards
+  assert.ok(!dashboardHtml.includes('id="card-bp"'), 'Must not contain card-bp');
+  assert.ok(!dashboardHtml.includes('id="card-spo2"'), 'Must not contain card-spo2');
+  assert.ok(!dashboardHtml.includes('id="card-rr"'), 'Must not contain card-rr');
+  assert.ok(!dashboardHtml.includes('id="card-glucose"'), 'Must not contain card-glucose');
+  assert.ok(!dashboardHtml.includes('id="card-ecg"'), 'Must not contain card-ecg');
+  assert.ok(!dashboardHtml.includes('id="card-activity"'), 'Must not contain card-activity');
+  assert.ok(!dashboardHtml.includes('id="card-sleep"'), 'Must not contain card-sleep');
+  assert.ok(!dashboardHtml.includes('id="card-fall"'), 'Must not contain card-fall');
+});
+
+runTest('Dashboard CSS: Implements responsive dual-cards-layout grid with mobile stacking', () => {
+  const componentsCss = fs.readFileSync(path.resolve(process.cwd(), 'web/css/components.css'), 'utf-8');
+  assert.ok(componentsCss.includes('.vital-cards-grid.dual-cards-layout'), 'components.css must define dual-cards-layout');
+  assert.ok(componentsCss.includes('repeat(2,'), 'dual-cards-layout must use 2-column repeat');
+  assert.ok(componentsCss.includes('@media (max-width: 680px)'), 'dual-cards-layout must have responsive mobile media query');
+});
+
+await runAsyncTest('Dashboard Controller: renderTelemetryData updates HR and Temp with zero JS errors', async () => {
+  const dom = {
+    'val-heart-rate': { textContent: '' },
+    'badge-heart-rate': { textContent: '', className: '' },
+    'card-heart-rate': { className: '', classList: { remove: () => {} } },
+    'val-temp': { textContent: '' },
+    'badge-temp': { textContent: '', className: '' },
+    'card-temp': { className: '', classList: { remove: () => {} } },
+    'unit-temp-display': { textContent: '' },
+    'temp-range-label': { textContent: '' },
+    'last-update-time': { textContent: '' },
+    'patient-data-source-badge': { style: {}, className: '', textContent: '' },
+    'overall-status-text': { textContent: '', style: {} },
+    'status-description': { textContent: '' },
+    'zone-badge-indicator': { textContent: '', className: '' },
+    'zone-triggers-summary': { style: {}, textContent: '' },
+    'zone-action-recommendation': { style: {}, textContent: '' },
+    'zone-sms-audit-bar': { style: {} },
+    'telemetry-hero-card': { className: '' },
+    'fall-hero-status': { textContent: '', style: {} }
+  };
+
+  globalThis.window = { addEventListener: () => {} };
+  globalThis.document = { 
+    addEventListener: () => {}, 
+    getElementById: (id) => dom[id] || null 
+  };
+  globalThis.localStorage = { getItem: () => null, setItem: () => {} };
+
+  const { renderTelemetryData } = await import('../web/js/pages/dashboard.js');
+
+  // 1. Nominal Green update
+  renderTelemetryData({ heartRate: 72, temperature: 36.8 });
+  assert.strictEqual(dom['val-heart-rate'].textContent, 72);
+  assert.strictEqual(dom['val-temp'].textContent, '36.8');
+  assert.ok(dom['card-heart-rate'].className.includes('card-zone-green'));
+  assert.ok(dom['card-temp'].className.includes('card-zone-green'));
+
+  // 2. Elevated Yellow update
+  renderTelemetryData({ heartRate: 110, temperature: 37.8 });
+  assert.strictEqual(dom['val-heart-rate'].textContent, 110);
+  assert.ok(dom['badge-heart-rate'].textContent.includes('TACHYCARDIA'));
+  assert.strictEqual(dom['val-temp'].textContent, '37.8');
+  assert.ok(dom['badge-temp'].textContent.includes('FEVER'));
+  assert.ok(dom['card-heart-rate'].className.includes('card-zone-yellow'));
+  assert.ok(dom['card-temp'].className.includes('card-zone-yellow'));
+});
+
+// ---------------------------------------------------------
 // Final Summary
 // ---------------------------------------------------------
 console.log('\n====================================================');
@@ -810,3 +893,4 @@ console.log('====================================================\n');
 if (failCount > 0) {
   process.exit(1);
 }
+

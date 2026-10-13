@@ -297,29 +297,10 @@
       </section>
 
       <!-- Comprehensive Health Data Cards Grid -->
-      <section class="vital-cards-grid" aria-label="Health Measurements from Connected Device">
+      <!-- Health Data Cards Grid (Heart Rate & Body Temperature) -->
+      <section class="vital-cards-grid dual-cards-layout" aria-label="Health Measurements from Connected Device">
         
-        <!-- 1. Blood Pressure Card -->
-        <article class="glass-panel vital-card" id="card-bp">
-          <div class="vital-header">
-            <span class="vital-title">Blood Pressure</span>
-            <div class="vital-icon-wrap" style="background:rgba(239,68,68,0.15); color:#ef4444; border:1px solid rgba(239,68,68,0.3);">
-              <i data-lucide="gauge" style="width:20px;height:20px;"></i>
-            </div>
-          </div>
-          <div class="vital-value-wrap bp-val-group">
-            <span class="vital-value" id="val-bp-sys">--</span>
-            <span class="slash">/</span>
-            <span class="vital-value" id="val-bp-dia" style="font-size:2.2rem; color:var(--text-muted);">--</span>
-            <span class="vital-unit">mmHg</span>
-          </div>
-          <div class="vital-footer">
-            <span id="bp-pulse-label">Pulse: -- BPM</span>
-            <span id="badge-bp" class="status-badge normal">AWAITING DATA</span>
-          </div>
-        </article>
-
-        <!-- 2. Heart Rate / Pulse Card -->
+        <!-- 1. Heart Rate / Pulse Card -->
         <article class="glass-panel vital-card" id="card-heart-rate">
           <div class="vital-header">
             <span class="vital-title">Heart Rate / Pulse</span>
@@ -337,7 +318,7 @@
           </div>
         </article>
 
-        <!-- 3. Body Temperature Card (with °C / °F dual toggle) -->
+        <!-- 2. Body Temperature Card (with °C / °F dual toggle) -->
         <article class="glass-panel vital-card" id="card-temp">
           <div class="vital-header">
             <div style="display:flex; align-items:center; gap:0.4rem;">
@@ -362,133 +343,8 @@
           </div>
         </article>
 
-        <!-- 4. Blood Oxygen (SpO2) Card -->
-        <article class="glass-panel vital-card" id="card-spo2">
-          <div class="vital-header">
-            <span class="vital-title">Blood Oxygen (SpO₂)</span>
-            <div class="vital-icon-wrap vital-icon-spo2">
-              <i data-lucide="droplet" style="width:20px;height:20px;"></i>
-            </div>
-          </div>
-          <div class="vital-value-wrap">
-            <span class="vital-value" id="val-spo2" style="color:var(--vital-spo2);">--</span>
-            <span class="vital-unit">%</span>
-          </div>
-          <div class="vital-footer">
-            <span>Target: &gt; 94%</span>
-            <span id="badge-spo2" class="status-badge normal">NORMAL</span>
-          </div>
-        </article>
-
-        <!-- 5. Respiratory Rate Card -->
-        <article class="glass-panel vital-card" id="card-rr">
-          <div class="vital-header">
-            <span class="vital-title">Respiratory Rate</span>
-            <div class="vital-icon-wrap" style="background:rgba(56,189,248,0.15); color:#38bdf8; border:1px solid rgba(56,189,248,0.3);">
-              <i data-lucide="wind" style="width:20px;height:20px;"></i>
-            </div>
-          </div>
-          <div class="vital-value-wrap">
-            <span class="vital-value" id="val-rr" style="color:#38bdf8;">--</span>
-            <span class="vital-unit">breaths/min</span>
-          </div>
-          <div class="vital-footer">
-            <span>Limit: 12 – 20 rpm</span>
-            <span id="badge-rr" class="status-badge normal">NORMAL</span>
-          </div>
-        </article>
-
-        <!-- 6. Blood Glucose Card -->
-        <article class="glass-panel vital-card" id="card-glucose">
-          <div class="vital-header">
-            <span class="vital-title">Blood Glucose</span>
-            <div class="vital-icon-wrap" style="background:rgba(234,179,8,0.15); color:#eab308; border:1px solid rgba(234,179,8,0.3);">
-              <i data-lucide="test-tube-2" style="width:20px;height:20px;"></i>
-            </div>
-          </div>
-          <div class="vital-value-wrap">
-            <span class="vital-value" id="val-glucose" style="color:#eab308;">--</span>
-            <span class="vital-unit" id="unit-glucose">mg/dL</span>
-          </div>
-          <div class="vital-footer">
-            <span id="glucose-context-label">Fasting Context</span>
-            <span id="badge-glucose" class="status-badge normal">AWAITING</span>
-          </div>
-        </article>
-
-        <!-- 7. ECG / Cardiac Rhythm Waveform Card -->
-        <article class="glass-panel vital-card" id="card-ecg" style="grid-column:span 1;">
-          <div class="vital-header">
-            <span class="vital-title">ECG &amp; Cardiac Rhythm</span>
-            <div class="vital-icon-wrap" style="background:rgba(168,85,247,0.15); color:#a855f7; border:1px solid rgba(168,85,247,0.3);">
-              <i data-lucide="activity" style="width:20px;height:20px;"></i>
-            </div>
-          </div>
-          <div style="margin:var(--space-xs) 0;">
-            <div style="font-size:1.15rem; font-weight:700; color:#cbd5e1;" id="val-ecg-rhythm">Normal Sinus Rhythm</div>
-            <div style="font-size:0.75rem; color:var(--text-subtle);" id="ecg-leads-status">Leads Connected (Lead I/II)</div>
-            <canvas class="ecg-waveform-canvas" id="canvas-ecg-trace"></canvas>
-          </div>
-          <div class="vital-footer">
-            <span>Electrophysiology</span>
-            <span id="badge-ecg" class="status-badge normal">RHYTHM OK</span>
-          </div>
-        </article>
-
-        <!-- 8. Steps & Daily Activity Card -->
-        <article class="glass-panel vital-card" id="card-activity">
-          <div class="vital-header">
-            <span class="vital-title">Daily Activity &amp; Steps</span>
-            <div class="vital-icon-wrap" style="background:rgba(34,197,94,0.15); color:#22c55e; border:1px solid rgba(34,197,94,0.3);">
-              <i data-lucide="footprints" style="width:20px;height:20px;"></i>
-            </div>
-          </div>
-          <div class="vital-value-wrap">
-            <span class="vital-value" id="val-steps" style="color:#22c55e;">--</span>
-            <span class="vital-unit">steps</span>
-          </div>
-          <div class="vital-footer">
-            <span id="activity-sub-label">0 kcal burned</span>
-            <span id="badge-activity" class="status-badge normal">ACTIVE</span>
-          </div>
-        </article>
-
-        <!-- 9. Sleep Analysis Card -->
-        <article class="glass-panel vital-card" id="card-sleep">
-          <div class="vital-header">
-            <span class="vital-title">Sleep Duration &amp; Score</span>
-            <div class="vital-icon-wrap" style="background:rgba(129,140,248,0.15); color:#818cf8; border:1px solid rgba(129,140,248,0.3);">
-              <i data-lucide="moon" style="width:20px;height:20px;"></i>
-            </div>
-          </div>
-          <div class="vital-value-wrap">
-            <span class="vital-value" id="val-sleep-hours" style="color:#818cf8;">--</span>
-            <span class="vital-unit">hours</span>
-          </div>
-          <div class="vital-footer">
-            <span id="sleep-sub-label">Deep Sleep: -- hrs</span>
-            <span id="badge-sleep" class="status-badge normal">RESTFUL</span>
-          </div>
-        </article>
-
-        <!-- 10. Fall & Movement Status Card -->
-        <article class="glass-panel vital-card" id="card-fall">
-          <div class="vital-header">
-            <span class="vital-title">Fall Detection</span>
-            <div class="vital-icon-wrap vital-icon-fall">
-              <i data-lucide="activity" style="width:20px;height:20px;"></i>
-            </div>
-          </div>
-          <div class="vital-value-wrap">
-            <span class="vital-value" id="val-fall" style="font-size:2rem; color:var(--vital-motion);">NORMAL</span>
-          </div>
-          <div class="vital-footer">
-            <span>IMU Jerk Vector</span>
-            <span id="badge-fall" class="status-badge normal">STABLE</span>
-          </div>
-        </article>
-
       </section>
+
       
       <!-- Dynamic / Extended Sensor Metrics Section -->
       <section id="dynamic-sensor-section" class="dynamic-metrics-section" style="display:none; margin-bottom:var(--space-md);">
